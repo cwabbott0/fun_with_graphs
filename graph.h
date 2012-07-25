@@ -12,7 +12,7 @@ typedef struct {
 } distance_matrix;
 
 void floyd_warshall(distance_matrix g);
-void fill_dist_matrix(distance_matrix matrix);
+void fill_dist_matrix(distance_matrix g);
 
 #define GRAPH_H
 #endif //GRAPH_H
