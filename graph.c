@@ -13,3 +13,14 @@ void floyd_warshall(distance_matrix g) {
 		}
 	}
 }
+
+void fill_dist_matrix(distance_matrix g)
+{
+	for(int i = 0; i < g.n-1; i++)
+	{	if(g.distances[g.n*i + g.n-1] != 1)
+			for(int j = 0; j < g.n-1; j++)
+				if((g.distances[g.n*(g.n-1) + j] == 1)&&((g.distances[g.n*j + i] + 1) < g.distances[g.n*j + g.n-1]))
+					 g.distances[g.n*j + g.n-1] = (g.distances[g.n*j + i] + 1);
+	g.distances[g.n*(g.n-1) + i] = g.distances[g.n*i + g.n-1];
+	}
+}
