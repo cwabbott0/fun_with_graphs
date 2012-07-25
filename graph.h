@@ -1,5 +1,6 @@
 #ifndef GRAPH_H
 
+#include "nauty.h"
 
 //Represents when there is no connection
 //graph.c adds stuff to infinity (crazy, I know),

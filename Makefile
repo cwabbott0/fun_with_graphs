@@ -1,6 +1,6 @@
 CC=mpicc
 GENG_MAIN=geng
-OBJECTS=graph.o geng.o
+OBJECTS=main.o graph.o geng.o
 CFLAGS=-I. -I./nauty24r2 -std=c99 -g
 GENG_OBJECTS=nauty24r2/gtools.o nauty24r2/nauty1.o nauty24r2/nautil1.o nauty24r2/naugraph1.o #objects required by geng
 
@@ -21,7 +21,7 @@ graph.o: graph.h
 	$(CC) -c $< -o $@ $(CFLAGS)
 
 fun_with_graphs: $(OBJECTS) $(GENG_OBJECTS)
-	$(CC) $(OBJECTS) $(GENG_OBJECTS) -o calc_graphs
+	$(CC) $(OBJECTS) $(GENG_OBJECTS) -o $@
 
 clean:
 	rm *.o
