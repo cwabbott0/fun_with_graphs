@@ -16,6 +16,7 @@ void floyd_warshall(distance_matrix g) {
 
 void fill_dist_matrix(distance_matrix g)
 {
+	//Figure out distance from new node to each other node
 	for(int i = 0; i < g.n-1; i++)
 	{
 		if(g.distances[g.n*i + g.n-1] == GRAPH_INFINITY)
@@ -28,4 +29,15 @@ void fill_dist_matrix(distance_matrix g)
 			g.distances[g.n*(g.n-1) + i] = g.distances[g.n*i + g.n-1] = min_dist;
 		}
 	}
+	
+	//One iteration of Floyd-Warshall with k = g.n - 1
+	for (int i = 0; i < g.n; i++) {
+		for (int j = 0; j < g.n; j++) {
+			int dist = g.distances[g.n*i + g.n-1] + g.distances[g.n*g.n-1 + j];
+			if(dist < g.distances[g.n*i + j]) {
+				g.distances[g.n*i + j] = dist;
+			}
+		}
+	}
+		
 }
