@@ -62,19 +62,7 @@ void test_fill_dist_matrix(void)
 	}
 }
 
-distance_matrix add_extra_node(distance_matrix input)
-{
-	distance_matrix output;
-	output.n = (input.n + 1);
-	output.distances = malloc(n*n*sizeof(*(out.distances)));
-	for(int i = 0; i < input.n; i++)
-		for(int j = 0; j < input.n; j++)
-			output.distances[(output.n)*i + j)] = input.distances[(input.n)*i + j)];
-	for(int i = 0; i  output n; i++)
-		output.distances[(output.n)*i + output.n - 1] =
-			output.distances[(output.n)*(output.n - 1) + i] = 1;
-	return output;
-}
+
 
 int Binomial[n][n*(n-1)/2];
 void put_into_queue(distance_matrix g, int m);
@@ -83,22 +71,25 @@ void next_combination(distance_matrix g, distance_matrix replacement);
 void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, int edges_added)
 {
 	int total edges = original_edges + edges_added;
-	distance_matrix submatrix;
-	submatrix.n = input.n-1;
-	submatrix.distances = malloc(submatrix.n*submatrix.n*sizeof(*(out.distances)));
-	for(int i = 0; i < submatrix.n; i++)
-		for(int j = 0; j < submatrix.n; j++)
-			submatrix.distances[input.n*i+j] = input.distances[input.n*i+j]
+	distance_matrix extended;
+	extended.n = (input.n+1)
+	extended.distances = malloc(extended.n*extended.n*sizeof(*(extended.n)))
+	for(int i = 0; i < input.n; i++)
+		for(int j = 0; j < input.n; j++)
+			extended.distances[(extended.n)*i + j)] = input.distances[(input.n)*i + j)];
+	for(int i = 0; i < extended.n; i++)
+		extended.distances[(extended.n)*i+extended.n-1] = extended.distances[(exteneded.n)*(extended.n-1)+i] = GRAPH_INFINITY;
+	
 
-			for(int i = 0; i < edges_added; i++)
-				input.distances[input.n*(input.n-1)+i] = input.distances[input.n*i + input.n - 1] = 1;
+	for(int i = 0; i < edges_added; i++)
+		extended.distances[extended.n*(extended.n-1)+i] = extended.distances[extended.n*i + extended.n - 1] = 1;
 
 	int count = 0;
-	while(count < Binomial[input.n - 1][edges_added])
+	while(count < Binomial[extended.n - 1][edges_added])
 	{
-		fill_dist_matrix(input.n);
-		put_into_queue(input,total_edges);
-		next_combination(input,submatrix);
+		fill_dist_matrix(extended.n);
+		put_into_queue(extended,total_edges);
+		next_combination(extended,input);
 		count++;
 	}
 }
