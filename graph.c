@@ -77,7 +77,7 @@ void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, 
 	for(int i = 0; i < input.n; i++)
 		for(int j = 0; j < input.n; j++)
 			extended.distances[(extended.n)*i + j)] = input.distances[(input.n)*i + j)];
-	for(int i = 0; i < extended.n; i++)
+	for(int i = edges_added; i < extended.n; i++)
 		extended.distances[(extended.n)*i+extended.n-1] = extended.distances[(exteneded.n)*(extended.n-1)+i] = GRAPH_INFINITY;
 	
 
