@@ -61,3 +61,14 @@ void test_fill_dist_matrix(void)
 		printf("\n");
 	}
 }
+
+void extend_dist_matrix(distance_matrix g)
+{
+	distance_matrix extended;
+	extended.n = g.n + 1;
+	extended.distances = (int*) malloc((extended.n)*(extended.n)*sizeof(int));
+	for (int i = 0; i < (extended.n)*(extended.n); i++)
+		extended.distances[i] = GRAPH_INFINITY;
+	for (int i = 0; i < (g.n*g.n); i++)
+		extended.distances[(i % g.n) + ((i/g.n)*extended.n)] = g.distances[i];
+}
