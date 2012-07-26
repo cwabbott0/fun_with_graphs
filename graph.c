@@ -73,10 +73,10 @@ void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, 
 	int total_edges = original_edges + edges_added;
 	distance_matrix extended;
 	extended.n = (input.n+1);
-	extended.distances = malloc(extended.n*extended.n*sizeof(*extended.distances));
+	extended.distances = (int*) malloc(extended.n*extended.n*sizeof(*extended.distances));
 	for(int i = 0; i < input.n; i++)
 		for(int j = 0; j < input.n; j++)
-			extended.distances[(extended.n)*i + j)] = input.distances[(input.n)*i + j)];
+			extended.distances[(extended.n)*i + j] = input.distances[(input.n)*i + j];
 	for(int i = edges_added; i < extended.n; i++)
 		extended.distances[(extended.n)*i+extended.n-1] = extended.distances[(extended.n)*(extended.n-1)+i] = GRAPH_INFINITY;
 	
@@ -107,7 +107,7 @@ void next_combination(distance_matrix g, distance_matrix replacement)
 			for(int j = 0; j < previous_edges; j++)
 				g.distances[g.n*j + g.n - 1] = g.distances[g.n*(g.n-1) + j] = 1;
 			for(int j = previous_edges; j <= i; j++)
-				g.distances[g.n*j + g.n - 1] = g.distances[g.n*(g.n-1) + j] = GRAPH_INIFINITY;
+				g.distances[g.n*j + g.n - 1] = g.distances[g.n*(g.n-1) + j] = GRAPH_INFINITY;
 			g.distances[g.n*(i+1) + g.n-1] = g.distances[g.n*(g.n-1) + i + 1] = 1;
 			for(int j = i+2; j < g.n - 1; j++)
 				if(g.distances[g.n*j + g.n-1] != 1)
