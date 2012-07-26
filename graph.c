@@ -70,15 +70,15 @@ void next_combination(distance_matrix g, distance_matrix replacement);
 
 void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, int edges_added)
 {
-	int total edges = original_edges + edges_added;
+	int total_edges = original_edges + edges_added;
 	distance_matrix extended;
-	extended.n = (input.n+1)
-	extended.distances = malloc(extended.n*extended.n*sizeof(*(extended.n)))
+	extended.n = (input.n+1);
+	extended.distances = malloc(extended.n*extended.n*sizeof(*extended.distances));
 	for(int i = 0; i < input.n; i++)
 		for(int j = 0; j < input.n; j++)
 			extended.distances[(extended.n)*i + j)] = input.distances[(input.n)*i + j)];
 	for(int i = edges_added; i < extended.n; i++)
-		extended.distances[(extended.n)*i+extended.n-1] = extended.distances[(exteneded.n)*(extended.n-1)+i] = GRAPH_INFINITY;
+		extended.distances[(extended.n)*i+extended.n-1] = extended.distances[(extended.n)*(extended.n-1)+i] = GRAPH_INFINITY;
 	
 
 	for(int i = 0; i < edges_added; i++)
@@ -87,8 +87,8 @@ void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, 
 	int count = 0;
 	while(count < Binomial[extended.n - 1][edges_added])
 	{
-		fill_dist_matrix(extended.n);
-		put_into_queue(extended,total_edges);
+		fill_dist_matrix(extended);
+//		put_into_queue(extended,total_edges);
 		next_combination(extended,input);
 		count++;
 	}
@@ -107,8 +107,8 @@ void next_combination(distance_matrix g, distance_matrix replacement)
 			for(int j = 0; j < previous_edges; j++)
 				g.distances[g.n*j + g.n - 1] = g.distances[g.n*(g.n-1) + j] = 1;
 			for(int j = previous_edges; j <= i; j++)
-				input.distances[g.n*j + g.n - 1] = g.distances[g.n*(g.n-1) + j] = GRAPH_INIFINITY;
-			input.distances[g.n*(i+1) + g.n-1] = g.distances[g.n*(g.n-1) + i + 1] = 1;
+				g.distances[g.n*j + g.n - 1] = g.distances[g.n*(g.n-1) + j] = GRAPH_INIFINITY;
+			g.distances[g.n*(i+1) + g.n-1] = g.distances[g.n*(g.n-1) + i + 1] = 1;
 			for(int j = i+2; j < g.n - 1; j++)
 				if(g.distances[g.n*j + g.n-1] != 1)
 					g.distances[g.n*j + g.n-1] = g.distances[g.n*(g.n-1) + j] = GRAPH_INFINITY;
