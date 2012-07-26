@@ -105,26 +105,27 @@ void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, 
 
 void next_combination(distance_matrix g, distance_matrix replacement)
 {
-for(int i = 0; i < g.n; i++)
-if((g.distances[g.n*i+g.n-1] == 1) && (g.distances[g.n*(i+1)+g.n-1] != 1))
-{int previous_edges = 0;
-for(int j = 0; j < i; j++)
-if(g.distances[g.n*j + g.n-1] == 1)
-previous_edges++;
+	for(int i = 0; i < g.n; i++)
+		if((g.distances[g.n*i+g.n-1] == 1) && (g.distances[g.n*(i+1)+g.n-1] != 1))
+		{
+			int previous_edges = 0;
+			for(int j = 0; j < i; j++)
+				if(g.distances[g.n*j + g.n-1] == 1)
+					previous_edges++;
 
-for(int j = 0; j < previous_edges; j++)
-g.distances[g.n*j + g.n - 1] = g.distances[g.n*(g.n-1) + j] = 1;
-for(int j = previous_edges; j <= i; j++)
-input.distances[g.n*j + g.n - 1] = g.distances[g.n*(g.n-1) + j] = GRAPH_INIFINITY;
-input.distances[g.n*(i+1) + g.n-1] = g.distances[g.n*(g.n-1) + i + 1] = 1;
-for(int j = i+2; j < g.n - 1; j++)
-if(g.distances[g.n*j + g.n-1] != 1)
-g.distances[g.n*j + g.n-1] = g.distances[g.n*(g.n-1) + j] = GRAPH_INFINITY;
+			for(int j = 0; j < previous_edges; j++)
+				g.distances[g.n*j + g.n - 1] = g.distances[g.n*(g.n-1) + j] = 1;
+			for(int j = previous_edges; j <= i; j++)
+				input.distances[g.n*j + g.n - 1] = g.distances[g.n*(g.n-1) + j] = GRAPH_INIFINITY;
+			input.distances[g.n*(i+1) + g.n-1] = g.distances[g.n*(g.n-1) + i + 1] = 1;
+			for(int j = i+2; j < g.n - 1; j++)
+				if(g.distances[g.n*j + g.n-1] != 1)
+					g.distances[g.n*j + g.n-1] = g.distances[g.n*(g.n-1) + j] = GRAPH_INFINITY;
 
-for(int i = 0; i < replacement.n; i++)
-for(int j = 0; j < replacement.n; j++)
-g.distances[g.n*i+j] = replacement.distances[replacement.n*i+j];
-break;
-}
+			for(int i = 0; i < replacement.n; i++)
+				for(int j = 0; j < replacement.n; j++)
+					g.distances[g.n*i+j] = replacement.distances[replacement.n*i+j];
+			break;
+		}
 }
 
