@@ -41,3 +41,23 @@ void fill_dist_matrix(distance_matrix g)
 	}
 		
 }
+
+void test_fill_dist_matrix(void)
+{
+	distance_matrix g;
+	int distances[9] = {
+		GRAPH_INFINITY, 1, 1,
+		1, GRAPH_INFINITY, GRAPH_INFINITY,
+		1, GRAPH_INFINITY, GRAPH_INFINITY
+	};
+	g.distances = distances;
+	g.n = 3;
+	
+	fill_dist_matrix(g);
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 3; j++)
+			printf("%d, ", g.distances[i*3 + j]);
+		printf("\n");
+	}
+}
