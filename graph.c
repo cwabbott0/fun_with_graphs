@@ -62,7 +62,7 @@ void test_fill_dist_matrix(void)
 	}
 }
 
-int Binomial[MAXN][MAXN*(MAXN-1)/2]
+/*int Binomial[MAXN][MAXN*(MAXN-1)/2];
 void initiate_Binomial()
 {
 	for(int i = 1; i <= MAXN; i++)
@@ -128,4 +128,4 @@ void next_combination(distance_matrix g, distance_matrix replacement)
 			break;
 		}
 }
-
+*/

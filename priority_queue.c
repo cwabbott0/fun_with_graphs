@@ -17,6 +17,11 @@ void priority_queue_delete(priority_queue *queue)
 	free(queue);
 }
 
+unsigned priority_queue_num_elems(priority_queue *queue)
+{
+	return queue->num_elems;
+}
+
 static bool is_power_of_two(unsigned num)
 {
 	return !(num & (num - 1));
@@ -47,7 +52,7 @@ bool priority_queue_push(priority_queue *queue, void *elem)
 	while(cur_elem != 0)
 	{
 		unsigned parent = (cur_elem - 1) / 2;
-		if(!queue->compare_gt(queue->elems[parent], queue->elems[cur_elem]))
+		if(!queue->compare_gt(queue->elems[cur_elem], queue->elems[parent]))
 			break;
 		
 		void *temp = queue->elems[parent];
@@ -82,10 +87,10 @@ void *priority_queue_pull(priority_queue *queue)
 		unsigned left = 2*cur_elem + 1;
 		unsigned right = 2*cur_elem + 2;
 		if(left < queue->num_elems - 1 &&
-		   queue->compare_gt(queue->elems[smallest], queue->elems[left]))
+		   queue->compare_gt(queue->elems[left], queue->elems[smallest]))
 		   smallest = left;
 		if(right < queue->num_elems - 1 &&
-		   queue->compare_gt(queue->elems[smallest], queue->elems[right]))
+		   queue->compare_gt(queue->elems[right], queue->elems[smallest]))
 		   smallest = right;
 		
 		if(smallest == cur_elem)
