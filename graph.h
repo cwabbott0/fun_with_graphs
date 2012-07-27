@@ -16,6 +16,7 @@ typedef struct {
 	int m;
 	int *k;
 	int diameter = 0;
+	int max_k = 0;
 } distance_matrix;
 
 void floyd_warshall(distance_matrix g);
