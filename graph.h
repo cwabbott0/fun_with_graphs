@@ -15,7 +15,7 @@ typedef struct {
 	int sum_of_distances = 0;
 	int m;
 	int *k;
-	int diameter = GRAPH_INFINITY;
+	int diameter = 0;
 } distance_matrix;
 
 void floyd_warshall(distance_matrix g);
