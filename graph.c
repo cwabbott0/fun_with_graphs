@@ -62,16 +62,15 @@ void test_fill_dist_matrix(void)
 	}
 }
 
-int Binomial[MAXN][MAXN*(MAXN-1)/2]
+int Binomial[MAXN][MAXN*(MAXN-1)/2];
 void initiate_Binomial()
 {
 	for(int i = 1; i <= MAXN; i++)
 	Binomial[i][0] = Binomial[i][i] = 1;
 
 	for(int i = 1; i <= MAXN; i++)
-		for(int j = 1;  j <= (n-i); j++)
-		Binomial[i][j] = Binomial[i-1][j-1] + Binomial[i-1][j];
-	}
+		for(int j = 1;  j <= (MAXN-i); j++)
+			Binomial[i][j] = Binomial[i-1][j-1] + Binomial[i-1][j];
 }
 
 void put_into_queue(distance_matrix g, int m);
@@ -128,4 +127,3 @@ void next_combination(distance_matrix g, distance_matrix replacement)
 			break;
 		}
 }
-

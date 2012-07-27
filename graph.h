@@ -6,7 +6,7 @@
 //graph.c adds stuff to infinity (crazy, I know),
 //So make sure it won't overflow
 #define GRAPH_INFINITY ((int)1000000)
-#define MAXN 1000
+//#define MAXN 1000
 
 typedef struct {
 	int *distances; //INFINITY for no connection
