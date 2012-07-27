@@ -1,25 +1,36 @@
 #include "graph.h"
-#include "priority_queue.h"
+#include "hash_set.h"
 #include <stdio.h>
 
-bool compare_gt(void *arg1, void *arg2)
+unsigned long hash(void *elem)
 {
-	return *((int*)arg1) > *((int*)arg2);
+	return *((unsigned*)elem);
+}
+
+bool compare(void *arg1, void *arg2)
+{
+	return *((int*)arg1) == *((int*)arg2);
+}
+
+void delete(void *elem)
+{
 }
 
 int main(void)
 {
-	priority_queue *queue = priority_queue_create(compare_gt);
-	int ints[5] = {3, 5, -1, 2, 10};
-	for(int i = 0; i < 5; i++)
-		priority_queue_push(queue, ints + i);
-	for(int i = 0; i < 5; i++)
+	unsigned ints[3] = {0, 10, 15};
+	hash_set *set = hash_set_create(10, hash, compare, delete);
+	for(int i = 0; i < 3; i++)
+		hash_set_add(set, ints + i);
+	
+	for(int i = 0; i < 3; i++)
 	{
-		int *val = priority_queue_pull(queue);
-		printf("%d, ", *val);
+		unsigned num = ints[i];
+		if(!hash_set_contains(set, &num))
+			printf("Error: %d returns false for hash_set_contains\n", num);
 	}
-	priority_queue_delete(queue);
-	return 0;
+	
+	hash_set_delete(set);
 }
 
 void geng_callback(FILE *file, graph *g, int n)

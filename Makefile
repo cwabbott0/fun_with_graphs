@@ -1,6 +1,6 @@
-CC=mpicc
+CC=gcc
 GENG_MAIN=geng
-OBJECTS=main.o priority_queue.o graph.o geng.o
+OBJECTS=main.o priority_queue.o hash_set.o graph.o geng.o
 CFLAGS=-I. -I./nauty24r2 -std=c99 -g
 GENG_OBJECTS=nauty24r2/gtools.o nauty24r2/nauty1.o nauty24r2/nautil1.o nauty24r2/naugraph1.o #objects required by geng
 
