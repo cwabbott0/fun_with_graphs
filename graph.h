@@ -13,11 +13,11 @@
 typedef struct {
 	int n;
 	int *distances;
-	int sum_of_distances = 0;
+	int sum_of_distances;
 	int m;
 	int *k;
-	int diameter = 0;
-	int max_k = 0;
+	int diameter;
+	int max_k;
 } distance_matrix;
 
 void floyd_warshall(distance_matrix g);
