@@ -7,19 +7,18 @@
 //So make sure it won't overflow
 #define GRAPH_INFINITY ((int)1000000)
 //#define MAXN 1000
+#define MAX_K ((int)4)
+
 
 typedef struct {
-	int *distances; //INFINITY for no connection
-	int n; //number of vertices
-} distance_matrix;
-
-typedef struct {
-	distance_matrix matrix;
-	int sum_of_distances;
+	int n;
+	int *distances;
+	int sum_of_distances = 0;
 	int m;
 	int *k;
-	int diameter;
-} graph_info;
+	int diameter = 0;
+	int max_k = 0;
+} distance_matrix;
 
 void floyd_warshall(distance_matrix g);
 void fill_dist_matrix(distance_matrix g);
