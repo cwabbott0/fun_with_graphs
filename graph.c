@@ -73,8 +73,25 @@ void initiate_Binomial()
 			Binomial[i][j] = Binomial[i-1][j-1] + Binomial[i-1][j];
 }
 
-void put_into_queue(distance_matrix g, int m);
+void put_into_queue(distance_matrix g);
 void next_combination(distance_matrix g, distance_matrix replacement);
+
+void calc_sum_and_diameter(distance matrix g)
+{
+	for(int i = 0; i < g.n; i++)
+		for(int j = i+1; j < g.n; j++)
+		{g.sum_of_distances += g.distances[g.n*i + j];
+		if(g.diameter < g.distances[g.n*i + j])
+			g.diameter = g.distances[g.n*i + j];
+		}
+}
+
+void calc_max_k(distance_matrix g)
+{
+	for(int i = 0; i < g.n; i++)
+		if(g.max_k < g.k[i])
+			g.max_k = g.k[i];
+}
 
 void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, int edges_added)
 {
@@ -92,31 +109,66 @@ void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, 
 	for(int i = 0; i < edges_added; i++)
 		extended.distances[extended.n*(extended.n-1)+i] = extended.distances[extended.n*i + extended.n - 1] = 1;
 
+	extended.k = (*int)malloc(extended.n*sizeof(int));
+	for(int i = 0; i < input.n; i++)
+		extended.k[i] = input.k[i];
+	for(int i = 0; i < edges_added; i++)
+		extended.k[i] +=1;
+
+	extended.k[extended.n-1] = edges_added;
+	extended.m = total_edges;
+
+	calc_max_k(extended)
+	
+	fill_dist_matrix(extended);
+	calc_sum_and_diameter(extended);
+
+	if(!(max_k > MAX_K))
+		put_into_queue(extended);
+
+
+
 	int count = 0;
 	while(count < Binomial[extended.n - 1][edges_added])
 	{
-		fill_dist_matrix(extended);
-//		put_into_queue(extended,total_edges);
-		next_combination(extended,input);
 		count++;
+		next_combination(extended,input);
+		calc_max_k(extended);
+		if(!(max_k > MAX_K))
+			continue;
+		fill_dist_matrix(extended);
+		calc_sum_and_diameter(extended);
+//		put_into_queue(extended);
 	}
 }
 
-void next_combination(distance_matrix g, distance_matrix replacement)
+void next_combination(distance_matrix g, distance_matrix replacement) //Finds next combination for edges, replaces k values, and replaces extended submatrix with original input
 {
 	for(int i = 0; i < g.n; i++)
-		if((g.distances[g.n*i+g.n-1] == 1) && (g.distances[g.n*(i+1)+g.n-1] != 1))
+		if((g.distances[g.n*i+g.n-1] == 1) && (g.distances[g.n*(i+1)+g.n-1] != 1)) //Find the first edge that is preceded by a non-edge
 		{
 			int previous_edges = 0;
 			for(int j = 0; j < i; j++)
 				if(g.distances[g.n*j + g.n-1] == 1)
-					previous_edges++;
-
+					previous_edges++; //Calculate the number of edges before this i
+			
+			//Move the edges by taking all previous edges back to the beginning, take the ith edge and move it up to the next node
 			for(int j = 0; j < previous_edges; j++)
-				g.distances[g.n*j + g.n - 1] = g.distances[g.n*(g.n-1) + j] = 1;
+				g.distances[g.n*j + g.n - 1] = g.distances[g.n*(g.n-1) + j] = 1; 
 			for(int j = previous_edges; j <= i; j++)
 				g.distances[g.n*j + g.n - 1] = g.distances[g.n*(g.n-1) + j] = GRAPH_INFINITY;
 			g.distances[g.n*(i+1) + g.n-1] = g.distances[g.n*(g.n-1) + i + 1] = 1;
+
+			//Update k values (k value for nth edge doesn't change overall, so we don't do anything to it). Overlap is taken into account.
+			for(int j = 0; j < previous_edges; j++)
+				g.k[j] += 1;
+			for(int j = i - previous_edges; j <= i; j++)
+				g.k[j] -= 1;
+
+			g.k[i+1] +=1;
+
+
+			//Replace submatrix with orignal input
 			for(int j = i+2; j < g.n - 1; j++)
 				if(g.distances[g.n*j + g.n-1] != 1)
 					g.distances[g.n*j + g.n-1] = g.distances[g.n*(g.n-1) + j] = GRAPH_INFINITY;
