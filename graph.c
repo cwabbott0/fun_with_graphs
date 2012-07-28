@@ -29,17 +29,17 @@ void fill_dist_matrix(distance_matrix g)
 			g.distances[g.n*(g.n-1) + i] = g.distances[g.n*i + g.n-1] = min_dist;
 		}
 	}
-	
+
 	//One iteration of Floyd-Warshall with k = g.n - 1
-	for (int i = 0; i < g.n; i++) {
-		for (int j = 0; j < g.n; j++) {
-			int dist = g.distances[g.n*i + g.n-1] + g.distances[g.n*g.n-1 + j];
+	for (int i = 0; i < g.n-1; i++) {
+		for (int j = i+1; j < g.n-1; j++) {
+			int dist = g.distances[g.n*i + g.n-1] + g.distances[g.n*(g.n-1) + j];
 			if(dist < g.distances[g.n*i + j]) {
-				g.distances[g.n*i + j] = dist;
+				g.distances[g.n*i + j] = g.distances[g.n*j+i] = dist;
 			}
 		}
 	}
-		
+
 }
 
 void test_fill_dist_matrix(void)
@@ -65,35 +65,43 @@ void test_fill_dist_matrix(void)
 int Binomial[MAXN][MAXN*(MAXN-1)/2];
 void initiate_Binomial()
 {
-	for(int i = 1; i <= MAXN; i++)
+	for(int i = 0; i <= MAXN; i++)
 	Binomial[i][0] = Binomial[i][i] = 1;
 
-	for(int i = 1; i <= MAXN; i++)
-		for(int j = 1;  j <= (MAXN-i); j++)
+	for(int j = 1; j < MAXN; j++)
+		for(int i = j+1;  i <= MAXN; i++)
 			Binomial[i][j] = Binomial[i-1][j-1] + Binomial[i-1][j];
 }
 
 void put_into_queue(distance_matrix g);
 void next_combination(distance_matrix g, distance_matrix replacement);
 
-void calc_sum_and_diameter(distance_matrix g)
+int calc_sum(distance_matrix g)
 {
-	g.diameter = 0;
-	g.sum_of_distances = 0;
+	int sum = 0;
 	for(int i = 0; i < g.n; i++)
 		for(int j = i+1; j < g.n; j++)
-		{g.sum_of_distances += g.distances[g.n*i + j];
-		if(g.diameter < g.distances[g.n*i + j])
-			g.diameter = g.distances[g.n*i + j];
-		}
+		sum += g.distances[g.n*i+j];
+	return sum;
 }
 
-void calc_max_k(distance_matrix g)
+int calc_diameter(distance_matrix g)
 {
-	g.max_k = 0;
+	int diameter = 0;
 	for(int i = 0; i < g.n; i++)
-		if(g.max_k < g.k[i])
-			g.max_k = g.k[i];
+		for(int j = i+1; j < g.n; j++)
+			if(diameter < g.distances[g.n*i + j])
+				diameter = g.distances[g.n*i + j];
+	return diameter;
+}
+
+int calc_max_k(distance_matrix g)
+{
+	int k_value = 0;
+	for(int i = 0; i < g.n; i++)
+		if(k_value < g.k[i])
+			k_value = g.k[i];
+	return k_value;
 }
 
 void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, int edges_added)
@@ -107,12 +115,11 @@ void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, 
 			extended.distances[(extended.n)*i + j] = input.distances[(input.n)*i + j];
 	for(int i = edges_added; i < extended.n; i++)
 		extended.distances[(extended.n)*i+extended.n-1] = extended.distances[(extended.n)*(extended.n-1)+i] = GRAPH_INFINITY;
-	
+
 
 	for(int i = 0; i < edges_added; i++)
 		extended.distances[extended.n*(extended.n-1)+i] = extended.distances[extended.n*i + extended.n - 1] = 1;
-
-	extended.k = (int*)malloc(extended.n*sizeof(int));
+	extended.k = (int*) malloc(extended.n*sizeof(int));
 	for(int i = 0; i < input.n; i++)
 		extended.k[i] = input.k[i];
 	for(int i = 0; i < edges_added; i++)
@@ -121,27 +128,31 @@ void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, 
 	extended.k[extended.n-1] = edges_added;
 	extended.m = total_edges;
 
-	calc_max_k(extended);
-	
+	extended.max_k = calc_max_k(extended);
+
 	fill_dist_matrix(extended);
-	calc_sum_and_diameter(extended);
+
+	extended.sum_of_distances = calc_sum(extended);
+	extended.diameter = calc_diameter(extended);
+
 
 	if(!(extended.max_k > MAX_K))
-		put_into_queue(extended);
-
-
+//		put_into_queue(extended);
+		print(extended);
 
 	int count = 0;
 	while(count < Binomial[extended.n - 1][edges_added])
 	{
 		count++;
 		next_combination(extended,input);
-		calc_max_k(extended);
-		if(!(extended.max_k > MAX_K))
+		extended.max_k = calc_max_k(extended);
+		if(extended.max_k > MAX_K)
 			continue;
 		fill_dist_matrix(extended);
-		calc_sum_and_diameter(extended);
+		calc_sum(extended);
+		calc_diameter(extended);
 //		put_into_queue(extended);
+		print(extended);
 	}
 }
 
