@@ -21,6 +21,14 @@ typedef struct {
 	int max_k;
 } distance_matrix;
 
+typedef struct {
+	distance_matrix matrix;
+	int sum_of_distances;
+	int m;
+	int *k;
+	int diameter;
+} graph_info;
+
 void floyd_warshall(distance_matrix g);
 void fill_dist_matrix(distance_matrix g);
 
