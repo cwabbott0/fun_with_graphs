@@ -136,9 +136,9 @@ void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, 
 	extended.diameter = calc_diameter(extended);
 
 
-	if(!(extended.max_k > MAX_K))
+//	if(extended.max_k <= MAX_K)
 //		put_into_queue(extended);
-		print(extended);
+//		print(extended);
 
 	int count = 0;
 	while(count < Binomial[extended.n - 1][edges_added])
@@ -152,7 +152,7 @@ void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, 
 		calc_sum(extended);
 		calc_diameter(extended);
 //		put_into_queue(extended);
-		print(extended);
+//		print(extended);
 	}
 }
 
