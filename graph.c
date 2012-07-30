@@ -1,4 +1,5 @@
 #include "graph.h"
+#include <stdbool.h>
 
 
 void floyd_warshall(distance_matrix g) {
@@ -104,39 +105,60 @@ int calc_max_k(distance_matrix g)
 	return k_value;
 }
 
+
+bool update_extended(distance_matrix *extended)
+{
+	extended->max_k = calc_max_k(*extended);
+	if(extended->max_k > MAX_K)
+		return false;
+
+	fill_dist_matrix(*extended);
+	extended->sum_of_distances = calc_sum(*extended);
+	extended->diameter = calc_diameter(*extended);
+	return true;
+}
+
+
+static void init_extended(distance_matrix input, distance_matrix *extended, int edges_added, int total_edges)
+{
+	extended->n = (input.n+1);
+
+	extended->distances = malloc(extended->n*extended->n*sizeof(*extended->distances));
+	for(int i = 0; i < input.n; i++)
+		for(int j = 0; j < input.n; j++)
+			extended->distances[(extended->n)*i + j] = input.distances[(input.n)*i + j];
+	for(int i = edges_added; i < extended->n; i++)
+		extended->distances[(extended->n)*i+extended->n-1] =
+		extended->distances[(extended->n)*(extended->n-1)+i] = GRAPH_INFINITY;
+
+	extended->k = (int*) malloc(extended->n*sizeof(int));
+	for(int i = 0; i < input.n; i++)
+		extended->k[i] = input.k[i];
+	extended->k[input.n] = edges_added;
+
+	extended->m = total_edges;
+}
+
+static void first_combination(distance_matrix extended, int edges_added)
+{
+	for(int i = 0; i < edges_added; i++)
+		extended.distances[extended.n*(extended.n-1)+i] =
+		extended.distances[extended.n*i + extended.n - 1] = 1;
+	for(int i = 0; i < edges_added; i++)
+		extended.k[i] += 1;
+}
+
 void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, int edges_added)
 {
 	int total_edges = original_edges + edges_added;
+
 	distance_matrix extended;
-	extended.n = (input.n+1);
-	extended.distances = (int*) malloc(extended.n*extended.n*sizeof(*extended.distances));
-	for(int i = 0; i < input.n; i++)
-		for(int j = 0; j < input.n; j++)
-			extended.distances[(extended.n)*i + j] = input.distances[(input.n)*i + j];
-	for(int i = edges_added; i < extended.n; i++)
-		extended.distances[(extended.n)*i+extended.n-1] = extended.distances[(extended.n)*(extended.n-1)+i] = GRAPH_INFINITY;
+	init_extended(input, &extended, edges_added, total_edges);
+	
+	first_combination(extended, edges_added);
 
-
-	for(int i = 0; i < edges_added; i++)
-		extended.distances[extended.n*(extended.n-1)+i] = extended.distances[extended.n*i + extended.n - 1] = 1;
-	extended.k = (int*) malloc(extended.n*sizeof(int));
-	for(int i = 0; i < input.n; i++)
-		extended.k[i] = input.k[i];
-	for(int i = 0; i < edges_added; i++)
-		extended.k[i] +=1;
-
-	extended.k[extended.n-1] = edges_added;
-	extended.m = total_edges;
-
-	extended.max_k = calc_max_k(extended);
-
-	fill_dist_matrix(extended);
-
-	extended.sum_of_distances = calc_sum(extended);
-	extended.diameter = calc_diameter(extended);
-
-
-//	if(extended.max_k <= MAX_K)
+	if(!update_extended(&extended))
+		;
 //		put_into_queue(extended);
 //		print(extended);
 
@@ -145,21 +167,18 @@ void add_edges_and_transfer_to_queue(distance_matrix input, int original_edges, 
 	{
 		count++;
 		next_combination(extended,input);
-		extended.max_k = calc_max_k(extended);
-		if(extended.max_k > MAX_K)
+		if(!update_extended(&extended))
 			continue;
-		fill_dist_matrix(extended);
-		calc_sum(extended);
-		calc_diameter(extended);
 //		put_into_queue(extended);
 //		print(extended);
 	}
 }
 
-void next_combination(distance_matrix g, distance_matrix replacement) //Finds next combination for edges, replaces k values, and replaces extended submatrix with original input
+//Finds next combination for edges, replaces k values, and replaces extended submatrix with original input
+void next_combination(distance_matrix g, distance_matrix replacement)
 {
 	for(int i = 0; i < g.n; i++)
-		if((g.distances[g.n*i+g.n-1] == 1) && (g.distances[g.n*(i+1)+g.n-1] != 1)) //Find the first edge that is preceded by a non-edge
+		if((g.distances[g.n*i+g.n-1] == 1) && (g.distances[g.n*(i+1)+g.n-1] != 1)) //Find the first edge that is followed by a non-edge
 		{
 			int previous_edges = 0;
 			for(int j = 0; j < i; j++)
