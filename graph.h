@@ -8,7 +8,7 @@
 #define GRAPH_INFINITY ((int)1000000)
 //#define MAXN 1000
 #define MAX_K ((int)4)
-#define MAXN (int(10))
+#define MAX_N ((int)10)
 
 
 typedef struct {
