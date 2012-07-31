@@ -63,20 +63,6 @@ void test_fill_dist_matrix(void)
 	}
 }
 
-int Binomial[MAXN][MAXN*(MAXN-1)/2];
-void initiate_Binomial()
-{
-	for(int i = 0; i <= MAXN; i++)
-	Binomial[i][0] = Binomial[i][i] = 1;
-
-	for(int j = 1; j < MAXN; j++)
-		for(int i = j+1;  i <= MAXN; i++)
-			Binomial[i][j] = Binomial[i-1][j-1] + Binomial[i-1][j];
-}
-
-void put_into_queue(distance_matrix g);
-void next_combination(distance_matrix g, distance_matrix replacement);
-
 int calc_sum(distance_matrix g)
 {
 	int sum = 0;
@@ -94,15 +80,6 @@ int calc_diameter(distance_matrix g)
 			if(diameter < g.distances[g.n*i + j])
 				diameter = g.distances[g.n*i + j];
 	return diameter;
-}
-
-int calc_max_k(distance_matrix g)
-{
-	int k_value = 0;
-	for(int i = 0; i < g.n; i++)
-		if(k_value < g.k[i])
-			k_value = g.k[i];
-	return k_value;
 }
 
 
