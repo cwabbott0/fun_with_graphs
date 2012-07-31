@@ -112,3 +112,34 @@ unsigned hash_set_size(hash_set *set)
 {
 	return set->size;
 }
+
+unsigned long test_hash(void *elem)
+{
+	return *((unsigned*)elem);
+}
+
+bool test_compare(void *arg1, void *arg2)
+{
+	return *((int*)arg1) == *((int*)arg2);
+}
+
+void test_delete(void *elem)
+{
+}
+
+void hash_set_test(void)
+{
+	unsigned ints[3] = {0, 10, 15};
+	hash_set *set = hash_set_create(10, test_hash, test_compare, test_delete);
+	for(int i = 0; i < 3; i++)
+		hash_set_add(set, ints + i);
+	
+	for(int i = 0; i < 3; i++)
+	{
+		unsigned num = ints[i];
+		if(!hash_set_contains(set, &num))
+			printf("Error: %d returns false for hash_set_contains\n", num);
+	}
+	
+	hash_set_delete(set);
+}

@@ -150,29 +150,3 @@ void add_edges_and_transfer_to_queue(distance_matrix input)
 	
 	add_edges(extended, 0);
 }
-
-int main()
-{
-	using namespace std;
-	distance_matrix g;
-	int distances [25] = {
-					GRAPH_INFINITY, 1, 1, 2, 2,
-					1, GRAPH_INFINITY, 1, 2, 1,
-					1, 1, GRAPH_INFINITY, 1, 2,
-					2, 2, 1, GRAPH_INFINITY, 1,
-					2, 1, 2, 1, GRAPH_INFINITY,
-	};
-	g.distances = distances;
-	g.n = 5;
-	int g_k[5] = {2, 3, 3, 2 ,2};
-	g.k = g_k;
-	g.m = 6;
-
-	initiate_Binomial();
-
-	add_edges_and_transfer_to_queue(g, g.m, 2);
-
-	cout << endl << Binomial[8][3];
-	
-	return 0;	
-	}

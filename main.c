@@ -2,35 +2,25 @@
 #include "hash_set.h"
 #include <stdio.h>
 
-unsigned long hash(void *elem)
-{
-	return *((unsigned*)elem);
-}
-
-bool compare(void *arg1, void *arg2)
-{
-	return *((int*)arg1) == *((int*)arg2);
-}
-
-void delete(void *elem)
-{
-}
-
 int main(void)
 {
-	unsigned ints[3] = {0, 10, 15};
-	hash_set *set = hash_set_create(10, hash, compare, delete);
-	for(int i = 0; i < 3; i++)
-		hash_set_add(set, ints + i);
+	distance_matrix g;
+	int distances [25] = {
+		GRAPH_INFINITY, 1, 1, 2, 2,
+		1, GRAPH_INFINITY, 1, 2, 1,
+		1, 1, GRAPH_INFINITY, 1, 2,
+		2, 2, 1, GRAPH_INFINITY, 1,
+		2, 1, 2, 1, GRAPH_INFINITY,
+	};
+	g.distances = distances;
+	g.n = 5;
+	int g_k[5] = {2, 3, 3, 2 ,2};
+	g.k = g_k;
+	g.m = 6;
 	
-	for(int i = 0; i < 3; i++)
-	{
-		unsigned num = ints[i];
-		if(!hash_set_contains(set, &num))
-			printf("Error: %d returns false for hash_set_contains\n", num);
-	}
+	add_edges_and_transfer_to_queue(g);
 	
-	hash_set_delete(set);
+	return 0;
 }
 
 void geng_callback(FILE *file, graph *g, int n)
