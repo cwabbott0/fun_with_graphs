@@ -2,6 +2,22 @@
 #include <stdbool.h>
 
 
+void print(distance_matrix g)
+{
+	using namespace std;
+	for (int i = 0; i < g.n*g.n; i++)
+	{
+		cout << g.distances[i] << " ";
+		if ((i + 1) % g.n == 0)
+			cout << endl;
+	}
+	for (int iii = 0; iii < g.n; iii++)
+		cout << g.k[iii] << " ";
+	cout << endl;
+	cout << "K:	" << g.max_k << "	D:	" << g.diameter << "	S:	" << g.sum_of_distances << endl;
+}
+
+
 void floyd_warshall(distance_matrix g) {
 	for (int k = 0; k < g.n; k++) {
 		for (int i = 0; i < g.n; i++) {
