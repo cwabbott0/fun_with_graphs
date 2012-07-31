@@ -121,17 +121,24 @@ static void init_extended(distance_matrix input, distance_matrix *extended)
 
 static void add_edges(distance_matrix *g, unsigned start)
 {
+	//setup m and k[n] for the children
+	//note that these values will not change b/w each child
+	//of this node in the search tree
 	g->m++;
 	g->k[g->n - 1]++;
 	unsigned old_max_k = g->max_k;
 	if(g->k[g->n - 1] > g->max_k)
 		g->max_k = g->k[g->n - 1];
 	
+	//if the child has a node of degree greater than MAX_K,
+	//don't search it
 	if(g->k[g->n - 1] <= MAX_K)
 	{
 		for(unsigned i = start; i < g->n - 1; i++)
 		{
 			g->k[i]++;
+			
+			//same as comment above
 			if(g->k[i] <= MAX_K)
 			{
 				unsigned old_max_k = g->max_k;
@@ -149,11 +156,12 @@ static void add_edges(distance_matrix *g, unsigned start)
 		}
 	}
 	
+	//tear down values we created in the beginning
 	g->max_k = old_max_k;
 	g->m--;
 	g->k[g->n - 1]--;
 	g->max_k = old_max_k;
-	
+
 	if(g->k[g->n - 1] > 0)
 		print(*g);
 }
