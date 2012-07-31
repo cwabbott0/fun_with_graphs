@@ -119,43 +119,43 @@ static void init_extended(distance_matrix input, distance_matrix *extended)
 	extended->max_k = input.max_k;
 }
 
-static void add_edges(distance_matrix g, unsigned start)
+static void add_edges(distance_matrix *g, unsigned start)
 {
-	g.m++;
-	g.k[g.n - 1]++;
-	unsigned old_max_k = g.max_k;
-	if(g.k[g.n - 1] > g.max_k)
-		g.max_k = g.k[g.n - 1];
+	g->m++;
+	g->k[g->n - 1]++;
+	unsigned old_max_k = g->max_k;
+	if(g->k[g->n - 1] > g->max_k)
+		g->max_k = g->k[g->n - 1];
 	
-	if(g.k[g.n - 1] <= MAX_K)
+	if(g->k[g->n - 1] <= MAX_K)
 	{
-		for(unsigned i = start; i < g.n - 1; i++)
+		for(unsigned i = start; i < g->n - 1; i++)
 		{
-			g.k[i]++;
-			if(g.k[i] <= MAX_K)
+			g->k[i]++;
+			if(g->k[i] <= MAX_K)
 			{
-				unsigned old_max_k = g.max_k;
-				if(g.k[i] > g.max_k)
-					g.max_k = g.k[i];
+				unsigned old_max_k = g->max_k;
+				if(g->k[i] > g->max_k)
+					g->max_k = g->k[i];
 				
-				g.distances[g.n*i + (g.n-1)] = g.distances[g.n*(g.n-1) + i] = 1;
+				g->distances[g->n*i + (g->n-1)] = g->distances[g->n*(g->n-1) + i] = 1;
 				
 				add_edges(g, i + 1);
 				
-				g.distances[g.n*i + (g.n-1)] = g.distances[g.n*(g.n-1) + i] = GRAPH_INFINITY;
-				g.max_k = old_max_k;
+				g->distances[g->n*i + (g->n-1)] = g->distances[g->n*(g->n-1) + i] = GRAPH_INFINITY;
+				g->max_k = old_max_k;
 			}
-			g.k[i]--;
+			g->k[i]--;
 		}
 	}
 	
-	g.max_k = old_max_k;
-	g.m--;
-	g.k[g.n - 1]--;
-	g.max_k = old_max_k;
+	g->max_k = old_max_k;
+	g->m--;
+	g->k[g->n - 1]--;
+	g->max_k = old_max_k;
 	
-	if(g.k[g.n - 1] > 0)
-		print(g);
+	if(g->k[g->n - 1] > 0)
+		print(*g);
 }
 
 void add_edges_and_transfer_to_queue(distance_matrix input)
@@ -163,5 +163,5 @@ void add_edges_and_transfer_to_queue(distance_matrix input)
 	distance_matrix extended;
 	init_extended(input, &extended);
 	
-	add_edges(extended, 0);
+	add_edges(&extended, 0);
 }
