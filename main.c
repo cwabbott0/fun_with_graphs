@@ -17,6 +17,7 @@ int main(void)
 	int g_k[5] = {2, 3, 3, 2 ,2};
 	g.k = g_k;
 	g.m = 6;
+	g.max_k = 3;
 	
 	add_edges_and_transfer_to_queue(g);
 	

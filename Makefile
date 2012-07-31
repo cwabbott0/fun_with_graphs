@@ -15,7 +15,7 @@ nauty24r2/Makefile: nauty24r2/configure
 geng.o: nauty nauty24r2/geng.c
 	$(CC) -c nauty24r2/geng.c -o geng.o -DMAXN=32 -DGENG_MAIN=$(GENG_MAIN) -DOUTPROC=geng_callback
 
-graph.o: graph.h
+graph.o main.o: graph.h
 
 %.o: %.c
 	$(CC) -c $< -o $@ $(CFLAGS)
@@ -25,7 +25,7 @@ fun_with_graphs: $(OBJECTS) $(GENG_OBJECTS)
 
 clean:
 	rm *.o
-	rm calc_graphs
+	rm fun_with_graphs
 	cd nauty24r2 && make clean
 
 .PHONY: all nauty clean
