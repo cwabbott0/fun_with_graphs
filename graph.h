@@ -19,11 +19,11 @@ typedef struct {
 	int *k;
 	int diameter;
 	int max_k;
-} distance_matrix;
+} graph_info;
 
-void floyd_warshall(distance_matrix g);
-void fill_dist_matrix(distance_matrix g);
-void add_edges_and_transfer_to_queue(distance_matrix input);
+void floyd_warshall(graph_info g);
+void fill_dist_matrix(graph_info g);
+void add_edges_and_transfer_to_queue(graph_info input);
 
 
 #define GRAPH_H

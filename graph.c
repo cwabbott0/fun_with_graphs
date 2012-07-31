@@ -1,7 +1,7 @@
 #include "graph.h"
 #include <stdbool.h>
 
-void print(distance_matrix g)
+void print(graph_info g)
 {
 	for (int i = 0; i < g.n; i++)
 	{
@@ -17,7 +17,7 @@ void print(distance_matrix g)
 }
 
 
-void floyd_warshall(distance_matrix g) {
+void floyd_warshall(graph_info g) {
 	for (int k = 0; k < g.n; k++) {
 		for (int i = 0; i < g.n; i++) {
 			for (int j = 0; j < g.n; j++) {
@@ -30,7 +30,7 @@ void floyd_warshall(distance_matrix g) {
 	}
 }
 
-void fill_dist_matrix(distance_matrix g)
+void fill_dist_matrix(graph_info g)
 {
 	//Figure out distance from new node to each other node
 	for(int i = 0; i < g.n-1; i++)
@@ -60,7 +60,7 @@ void fill_dist_matrix(distance_matrix g)
 
 void test_fill_dist_matrix(void)
 {
-	distance_matrix g;
+	graph_info g;
 	int distances[9] = {
 		GRAPH_INFINITY, 1, 1,
 		1, GRAPH_INFINITY, GRAPH_INFINITY,
@@ -78,7 +78,7 @@ void test_fill_dist_matrix(void)
 	}
 }
 
-int calc_sum(distance_matrix g)
+int calc_sum(graph_info g)
 {
 	int sum = 0;
 	for(int i = 0; i < g.n; i++)
@@ -87,7 +87,7 @@ int calc_sum(distance_matrix g)
 	return sum;
 }
 
-int calc_diameter(distance_matrix g)
+int calc_diameter(graph_info g)
 {
 	int diameter = 0;
 	for(int i = 0; i < g.n; i++)
@@ -98,7 +98,7 @@ int calc_diameter(distance_matrix g)
 }
 
 
-static void init_extended(distance_matrix input, distance_matrix *extended)
+static void init_extended(graph_info input, graph_info *extended)
 {
 	extended->n = (input.n+1);
 
@@ -119,7 +119,7 @@ static void init_extended(distance_matrix input, distance_matrix *extended)
 	extended->max_k = input.max_k;
 }
 
-static void add_edges(distance_matrix *g, unsigned start)
+static void add_edges(graph_info *g, unsigned start)
 {
 	//setup m and k[n] for the children
 	//note that these values will not change b/w each child
@@ -166,9 +166,9 @@ static void add_edges(distance_matrix *g, unsigned start)
 		print(*g);
 }
 
-void add_edges_and_transfer_to_queue(distance_matrix input)
+void add_edges_and_transfer_to_queue(graph_info input)
 {
-	distance_matrix extended;
+	graph_info extended;
 	init_extended(input, &extended);
 	
 	add_edges(&extended, 0);

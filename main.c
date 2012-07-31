@@ -4,7 +4,7 @@
 
 int main(void)
 {
-	distance_matrix g;
+	graph_info g;
 	int distances [25] = {
 		GRAPH_INFINITY, 1, 1, 2, 2,
 		1, GRAPH_INFINITY, 1, 2, 1,

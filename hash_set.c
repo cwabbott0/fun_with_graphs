@@ -1,6 +1,6 @@
 #include "hash_set.h"
 #include <stdlib.h>
-
+#include <stdio.h>
 
 static _bucket_t *bucket_create(void *ptr)
 {
