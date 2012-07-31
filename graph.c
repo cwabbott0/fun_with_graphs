@@ -83,19 +83,6 @@ int calc_diameter(distance_matrix g)
 }
 
 
-bool update_extended(distance_matrix *extended)
-{
-	extended->max_k = calc_max_k(*extended);
-	if(extended->max_k > MAX_K)
-		return false;
-
-	fill_dist_matrix(*extended);
-	extended->sum_of_distances = calc_sum(*extended);
-	extended->diameter = calc_diameter(*extended);
-	return true;
-}
-
-
 static void init_extended(distance_matrix input, distance_matrix *extended)
 {
 	extended->n = (input.n+1);
@@ -122,7 +109,7 @@ static void add_edges(distance_matrix g, unsigned start)
 	g.k[g.n - 1]++;
 	unsigned old_max_k = g.max_k;
 	if(g.k[g.n - 1] > g.max_k)
-		g.max_k = g.k;
+		g.max_k = g.k[g.n - 1];
 	
 	if(g.k[g.n - 1] < MAX_K)
 	{
