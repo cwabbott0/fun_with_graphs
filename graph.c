@@ -13,7 +13,7 @@ void print(graph_info g)
 	for (int i = 0; i < g.n; i++)
 		printf("%d ", g.k[i]);
 	printf("\n");
-	printf("K: %d, D: %d, S: %d\n", g.max_k, g.diameter, g.sum_of_distances);
+	printf("K: %d, D: %d, S: %d, M: %d\n", g.max_k, g.diameter, g.sum_of_distances, g.m);
 }
 
 
@@ -178,17 +178,17 @@ void test_add_edges(void)
 	graph_info g;
 	int distances [25] = {
 		GRAPH_INFINITY, 1, 1, 2, 2,
-		1, GRAPH_INFINITY, 1, 2, 1,
-		1, 1, GRAPH_INFINITY, 1, 2,
-		2, 2, 1, GRAPH_INFINITY, 1,
-		2, 1, 2, 1, GRAPH_INFINITY,
+		1, GRAPH_INFINITY, 2, 1, 3,
+		1, 2, GRAPH_INFINITY, 3, 1,
+		2, 1, 3, GRAPH_INFINITY, 4,
+		2, 3, 1, 4, GRAPH_INFINITY,
 	};
 	g.distances = distances;
 	g.n = 5;
-	int g_k[5] = {2, 3, 3, 2 ,2};
+	int g_k[5] = {2, 2, 2, 1 ,1};
 	g.k = g_k;
-	g.m = 6;
-	g.max_k = 3;
-	
+	g.m = 4;
+	g.max_k = 2;
+
 	add_edges_and_transfer_to_queue(g);
 }
