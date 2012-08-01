@@ -1,7 +1,7 @@
 #include "graph.h"
 #include <stdbool.h>
 
-void print(graph_info g)
+void print_graph(graph_info g)
 {
 	for (int i = 0; i < g.n; i++)
 	{
@@ -97,6 +97,54 @@ int calc_diameter(graph_info g)
 	return diameter;
 }
 
+graph_info *graph_info_from_nauty(graph *g, int n)
+{
+	graph_info *ret = malloc(sizeof(graph_info));
+	ret->n = n;
+	ret->distances = malloc(n * n * sizeof(*ret->distances));
+	ret->k = malloc(n * sizeof(*ret->k));
+
+	int m = (n + WORDSIZE - 1) / WORDSIZE;
+	ret->m = 0; //total number of edges
+	for (int i = 0; i < n; i++) {
+		ret->k[i] = 0;
+		for (int j = 0; j < n; j++) {
+			if(i == j)
+				ret->distances[n*i + j] = 0;
+			else if(ISELEMENT(g + i*m, j))
+			{
+				ret->distances[n*i + j] = 1;
+				ret->k[i]++;
+				ret->m++;
+			}
+			else
+				ret->distances[n*i + j] = GRAPH_INFINITY;
+		}
+	}
+	ret->m /= 2;
+	
+	ret->max_k = 0;
+	for (int i = 0; i < n; i++)
+		if (ret->k[i] > ret->max_k)
+			ret->max_k = ret->k[i];
+	
+	floyd_warshall(*ret);
+	ret->sum_of_distances = calc_sum(*ret);
+	ret->diameter = calc_diameter(*ret);
+	ret->nauty_graph = malloc(n * m * sizeof(graph));
+	memcpy(ret->nauty_graph, g, n * m * sizeof(graph));
+	
+	return ret;
+}
+
+void graph_info_destroy(graph_info *g)
+{
+	free(g->distances);
+	free(g->k);
+	free(g->nauty_graph);
+	free(g);
+}
+
 
 static void init_extended(graph_info input, graph_info *extended)
 {
@@ -106,9 +154,10 @@ static void init_extended(graph_info input, graph_info *extended)
 	for(int i = 0; i < input.n; i++)
 		for(int j = 0; j < input.n; j++)
 			extended->distances[(extended->n)*i + j] = input.distances[(input.n)*i + j];
-	for(int i = 0; i < extended->n; i++)
+	for(int i = 0; i < extended->n - 1; i++)
 		extended->distances[(extended->n)*i+extended->n-1] =
 		extended->distances[(extended->n)*(extended->n-1)+i] = GRAPH_INFINITY;
+	extended->distances[extended->n*extended->n - 1] = 0;
 
 	extended->k = (int*) malloc(extended->n*sizeof(int));
 	for(int i = 0; i < input.n; i++)
@@ -117,6 +166,12 @@ static void init_extended(graph_info input, graph_info *extended)
 
 	extended->m = input.m;
 	extended->max_k = input.max_k;
+}
+
+static void destroy_extended(graph_info extended)
+{
+	free(extended.distances);
+	free(extended.k);
 }
 
 static void add_edges(graph_info *g, unsigned start)
@@ -162,7 +217,7 @@ static void add_edges(graph_info *g, unsigned start)
 	g->k[g->n - 1]--;
 
 	if(g->k[g->n - 1] > 0)
-		print(*g);
+		print_graph(*g);
 }
 
 void add_edges_and_transfer_to_queue(graph_info input)
