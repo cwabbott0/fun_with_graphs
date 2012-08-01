@@ -168,6 +168,19 @@ static void init_extended(graph_info input, graph_info *extended)
 	extended->max_k = input.max_k;
 }
 
+static graph_info *new_graph_info(graph_info src)
+{
+	graph_info *ret = (graph_info*) malloc(sizeof(graph_info));
+	ret->n = src.n;
+	ret->distances = (int*) malloc(ret->n * ret->n * sizeof(*ret->distances));
+	ret->k = (int*)malloc(ret->n * sizeof(*ret->k));
+	ret->k = src.k;
+	ret->m = src.m;
+	ret->max_k = src.max_k;
+	memcpy(ret->distances,src.distances,src.n*src.n*sizeof(src.distances));
+	return ret;
+}
+
 static void destroy_extended(graph_info extended)
 {
 	free(extended.distances);
@@ -216,8 +229,15 @@ static void add_edges(graph_info *g, unsigned start)
 	g->m--;
 	g->k[g->n - 1]--;
 
+
 	if(g->k[g->n - 1] > 0)
-		print_graph(*g);
+	{
+		graph_info *temporary = new_graph_info(*g);
+		fill_dist_matrix(*temporary); 
+		temporary->diameter = calc_diameter(*temporary); 
+		temporary->sum_of_distances = calc_sum(*temporary); 
+		print(*temporary);
+	}
 }
 
 void add_edges_and_transfer_to_queue(graph_info input)
