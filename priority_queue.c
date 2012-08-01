@@ -2,19 +2,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-priority_queue *priority_queue_create(bool (*compare_gt)(void *elem1, void *elem2))
+priority_queue *priority_queue_create(bool (*compare_gt)(void *elem1, void *elem2),
+									  void (*delete)(void *elem))
 {
 	priority_queue *queue = malloc(sizeof(priority_queue));
 	queue->elems = NULL;
 	queue->num_elems = 0;
 	queue->compare_gt = compare_gt;
+	queue->delete = delete;
 	return queue;
 }
 
 void priority_queue_delete(priority_queue *queue)
 {
 	if(queue->elems)
+	{
+		for(int i = 0; i < queue->num_elems; i++)
+			queue->delete(queue->elems[i]);
 		free(queue->elems);
+	}
 	free(queue);
 }
 
@@ -76,6 +82,7 @@ void *priority_queue_pull(priority_queue *queue)
 	{
 		free(queue->elems);
 		queue->elems = NULL;
+		queue->num_elems--;
 		return ret;
 	}
 	
@@ -103,14 +110,14 @@ void *priority_queue_pull(priority_queue *queue)
 		cur_elem = smallest;
 	}
 	
+	queue->num_elems--;
 	if(is_power_of_two(queue->num_elems))
 	{
-		queue->elems = realloc(queue->elems, queue->num_elems / 2);
+		queue->elems = realloc(queue->elems, queue->num_elems * sizeof(void*));
 		if(!queue->elems)
 			return NULL;
 	}
-	
-	queue->num_elems--;
+
 	return ret;
 }
 
@@ -119,16 +126,23 @@ static bool compare_gt(void *arg1, void *arg2)
 	return *((int*)arg1) > *((int*)arg2);
 }
 
+static void delete(void *elem)
+{
+}
+
 void priority_queue_test(void)
 {
-	priority_queue *queue = priority_queue_create(compare_gt);
-	int ints[5] = {3, 5, -1, 2, 10};
-	for(int i = 0; i < 5; i++)
+	priority_queue *queue = priority_queue_create(compare_gt, delete);
+	int ints[1000];
+	for(int i = 0; i < 1000; i++)
+		ints[i] = i;
+	for(int i = 0; i < 1000; i++)
 		priority_queue_push(queue, ints + i);
-	for(int i = 0; i < 5; i++)
+	for(int i = 0; i < 1000; i++)
 	{
 		int *val = priority_queue_pull(queue);
 		printf("%d, ", *val);
 	}
+	printf("\n");
 	priority_queue_delete(queue);
 }
