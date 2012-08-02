@@ -13,6 +13,20 @@ void print_graph(graph_info g)
 	for (int i = 0; i < g.n; i++)
 		printf("%d ", g.k[i]);
 	printf("\n");
+
+	unsigned m = (g.n + WORDSIZE - 1) / WORDSIZE;
+	for(int i = 0; i < g.n; i++)
+	{
+		for(int j = 0; j < g.n; j++)
+		{
+			if(ISELEMENT(GRAPHROW(g.nauty_graph, i, m), j))
+				printf("1, ");
+			else
+				printf("0, ");
+		}
+		printf("\n");
+	}
+	printf("\n");
 	printf("K: %d, D: %d, S: %d, M: %d\n", g.max_k, g.diameter, g.sum_of_distances, g.m);
 }
 
@@ -149,6 +163,21 @@ void graph_info_destroy(graph_info *g)
 static void init_extended(graph_info input, graph_info *extended)
 {
 	extended->n = (input.n+1);
+	
+	int m = (input.n + WORDSIZE - 1) / WORDSIZE;
+	int extended_m = (input.n + WORDSIZE)/WORDSIZE;
+	
+	extended->nauty_graph = malloc(extended->n * extended_m * sizeof(setword));
+	
+	for(int i = 0; i < input.n; i++)
+	{
+		for(int j = 0; j < m; j++)
+			extended->nauty_graph[i*extended_m + j] = input.nauty_graph[i*m + j];
+		if(extended_m > m)
+			extended->nauty_graph[i*extended_m + m] = 0;
+	}
+	for(int i = 0; i < extended_m; i++)
+		extended->nauty_graph[input.n*extended_m + i] = 0;
 
 	extended->distances = malloc(extended->n*extended->n*sizeof(*extended->distances));
 	for(int i = 0; i < input.n; i++)
@@ -171,23 +200,27 @@ static void init_extended(graph_info input, graph_info *extended)
 static graph_info *new_graph_info(graph_info src)
 {
 	graph_info *ret = (graph_info*) malloc(sizeof(graph_info));
+	int m = (src.n + WORDSIZE - 1) / WORDSIZE;
 	ret->n = src.n;
-	ret->distances = (int*) malloc(ret->n * ret->n * sizeof(*ret->distances));
-	ret->k = (int*)malloc(ret->n * sizeof(*ret->k));
+	ret->distances = malloc(ret->n * ret->n * sizeof(*ret->distances));
+	ret->nauty_graph = malloc(ret->n * m * sizeof(setword));
+	ret->k = malloc(ret->n * sizeof(*ret->k));
 	ret->k = src.k;
 	ret->m = src.m;
 	ret->max_k = src.max_k;
-	memcpy(ret->distances,src.distances,src.n*src.n*sizeof(src.distances));
+	memcpy(ret->distances, src.distances, src.n * src.n * sizeof(*src.distances));
+	memcpy(ret->nauty_graph, src.nauty_graph, src.n * m * sizeof(setword));
 	return ret;
 }
 
 static void destroy_extended(graph_info extended)
 {
 	free(extended.distances);
+	free(extended.nauty_graph);
 	free(extended.k);
 }
 
-static void add_edges(graph_info *g, unsigned start)
+static void add_edges(graph_info *g, unsigned start, int extended_m)
 {
 	//setup m and k[n] for the children
 	//note that these values will not change b/w each child
@@ -214,9 +247,13 @@ static void add_edges(graph_info *g, unsigned start)
 					g->max_k = g->k[i];
 				
 				g->distances[g->n*i + (g->n-1)] = g->distances[g->n*(g->n-1) + i] = 1;
+				ADDELEMENT(GRAPHROW(g->nauty_graph, i, extended_m), g->n-1);
+				ADDELEMENT(GRAPHROW(g->nauty_graph, g->n-1, extended_m), i);
 				
-				add_edges(g, i + 1);
+				add_edges(g, i + 1, extended_m);
 				
+				DELELEMENT(GRAPHROW(g->nauty_graph, i, extended_m), g->n-1);
+				DELELEMENT(GRAPHROW(g->nauty_graph, g->n-1, extended_m), i);
 				g->distances[g->n*i + (g->n-1)] = g->distances[g->n*(g->n-1) + i] = GRAPH_INFINITY;
 				g->max_k = old_max_k;
 			}
@@ -236,7 +273,7 @@ static void add_edges(graph_info *g, unsigned start)
 		fill_dist_matrix(*temporary); 
 		temporary->diameter = calc_diameter(*temporary); 
 		temporary->sum_of_distances = calc_sum(*temporary); 
-		print(*temporary);
+		print_graph(*temporary);
 	}
 }
 
@@ -245,25 +282,41 @@ void add_edges_and_transfer_to_queue(graph_info input)
 	graph_info extended;
 	init_extended(input, &extended);
 	
-	add_edges(&extended, 0);
+	add_edges(&extended, 0, (extended.n + WORDSIZE - 1) / WORDSIZE);
 }
 
 void test_add_edges(void)
 {
 	graph_info g;
 	int distances [25] = {
-		GRAPH_INFINITY, 1, 1, 2, 2,
-		1, GRAPH_INFINITY, 2, 1, 3,
-		1, 2, GRAPH_INFINITY, 3, 1,
-		2, 1, 3, GRAPH_INFINITY, 4,
-		2, 3, 1, 4, GRAPH_INFINITY,
+		0, 1, 1, 2, 2,
+		1, 0, 2, 1, 3,
+		1, 2, 0, 3, 1,
+		2, 1, 3, 0, 4,
+		2, 3, 1, 4, 0,
 	};
+	int m = (4 + WORDSIZE) / WORDSIZE;
+	graph nauty_graph[m * 5];
+	for (int i = 0; i < m * 5; i++)
+		nauty_graph[i] = 0;
+	ADDELEMENT(GRAPHROW(nauty_graph, 0, m), 1);
+	ADDELEMENT(GRAPHROW(nauty_graph, 0, m), 2);
+	ADDELEMENT(GRAPHROW(nauty_graph, 1, m), 0);
+	ADDELEMENT(GRAPHROW(nauty_graph, 1, m), 3);
+	ADDELEMENT(GRAPHROW(nauty_graph, 2, m), 0);
+	ADDELEMENT(GRAPHROW(nauty_graph, 2, m), 4);
+	ADDELEMENT(GRAPHROW(nauty_graph, 3, m), 1);
+	ADDELEMENT(GRAPHROW(nauty_graph, 4, m), 2);
+	
 	g.distances = distances;
+	g.nauty_graph = nauty_graph;
 	g.n = 5;
 	int g_k[5] = {2, 2, 2, 1 ,1};
 	g.k = g_k;
 	g.m = 4;
 	g.max_k = 2;
+	
+	print_graph(g);
 
 	add_edges_and_transfer_to_queue(g);
 }

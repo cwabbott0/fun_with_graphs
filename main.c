@@ -44,14 +44,15 @@ void graph_delete(void *elem)
 
 int main(void)
 {
-	graph_queue = priority_queue_create(graph_compare_gt, graph_delete);
+	/*graph_queue = priority_queue_create(graph_compare_gt, graph_delete);
 	call_geng(8, 4);
 	while(priority_queue_num_elems(graph_queue))
 	{
 		graph_info *g = priority_queue_pull(graph_queue);
 		print_graph(*g);
 		graph_info_destroy(g);
-	}
+	}*/
+	test_add_edges();
 	return 0;
 }
 
