@@ -2,7 +2,7 @@ CC=gcc
 GENG_MAIN=geng
 OBJECTS=main.o priority_queue.o hash_set.o graph.o level.o geng.o
 CFLAGS=-I. -I./nauty24r2 -std=c99 -g
-GENG_OBJECTS=nauty24r2/gtools.o nauty24r2/nauty1.o nauty24r2/nautil1.o nauty24r2/naugraph1.o #objects required by geng
+NAUTY_OBJECTS=nauty24r2/gtools.o nauty24r2/nauty1.o nauty24r2/nautil1.o nauty24r2/naugraph1.o nauty24r2/naututil.o nauty24r2/rng.o
 
 all: fun_with_graphs
 
@@ -20,8 +20,8 @@ graph.o main.o: graph.h
 %.o: %.c
 	$(CC) -c $< -o $@ $(CFLAGS)
 
-fun_with_graphs: $(OBJECTS) $(GENG_OBJECTS)
-	$(CC) $(OBJECTS) $(GENG_OBJECTS) -o $@
+fun_with_graphs: $(OBJECTS) $(NAUTY_OBJECTS)
+	$(CC) $(OBJECTS) $(NAUTY_OBJECTS) -o $@
 
 clean:
 	rm *.o

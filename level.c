@@ -1,4 +1,84 @@
 #include "level.h"
+#include "naututil.h"
+#include <string.h>
+
+//type for the hash set
+//we need to know n so we can compare & hash
+typedef struct {
+	unsigned n;
+	graph *g;
+} nauty_graph_with_n;
+
+//Hash set implementation/callbacks
+
+static unsigned long nauty_hash(void *elem)
+{
+	nauty_graph_with_n *_graph = elem;
+	graph *g = _graph->g;
+	int m = (_graph->n + WORDSIZE - 1) / WORDSIZE;
+	return (unsigned long) hash(g, m * _graph->n, 15);
+}
+
+static bool nauty_compare(void *elem1, void *elem2)
+{
+	nauty_graph_with_n *graph1 = elem1, *graph2 = elem2;
+	if (graph1->n != graph2->n)
+		return false;
+	
+	graph *g1 = graph1->g, *g2 = graph2->g;
+	int m = (graph1->n + WORDSIZE - 1) / WORDSIZE;
+	return !memcmp(g1, g2, graph1->n * m * sizeof(setword));
+}
+
+static void nauty_delete(void *elem)
+{
+	nauty_graph_with_n *graph = elem;
+	free(graph->g);
+	free(graph);
+}
+
+//Priority queue implementation/callbacks
+
+static bool graph_compare_gt(void *elem1, void *elem2)
+{
+	graph_info *graph1 = elem1, *graph2 = elem2;
+	
+	if(graph1->sum_of_distances > graph2->sum_of_distances)
+		return true;
+	else if(graph1->sum_of_distances < graph2->sum_of_distances)
+		return false;
+	return graph1->diameter > graph2->diameter;
+}
+
+static void graph_delete(void *elem)
+{
+	graph_info *graph = elem;
+	graph_info_destroy(graph);
+}
+
+
+level *level_create(unsigned n, unsigned p, unsigned max_k)
+{
+	level *ret = malloc(sizeof(level));
+	ret->n = n;
+	ret->p = p;
+	ret->max_k = max_k;
+	ret->min_m = n - 1;
+	ret->num_m = (n * (n - 1) / 2) - ret->min_m;
+	
+	ret->sets = malloc(ret->num_m * sizeof(hash_set*));
+	ret->queues = malloc(ret->num_m * sizeof(priority_queue*));
+	
+	for(int i = 0; i < ret->num_m; i++)
+	{
+		ret->sets[i] = hash_set_create(1024, nauty_hash, nauty_compare,
+									   nauty_delete);
+		ret->queues[i] = priority_queue_create(graph_compare_gt,
+											   graph_delete);
+	}
+	
+	return ret;
+}
 
 static void init_extended(graph_info input, graph_info *extended)
 {

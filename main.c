@@ -23,23 +23,6 @@ int call_geng(unsigned n, unsigned k)
 	return geng(4, geng_args);
 }
 
-bool graph_compare_gt(void *elem1, void *elem2)
-{
-	graph_info *graph1 = elem1, *graph2 = elem2;
-	
-	if(graph1->sum_of_distances > graph2->sum_of_distances)
-		return true;
-	else if(graph1->sum_of_distances < graph2->sum_of_distances)
-		return false;
-	return graph1->diameter > graph2->diameter;
-}
-
-void graph_delete(void *elem)
-{
-	graph_info *graph = elem;
-	graph_info_destroy(graph);
-}
-
 int main(void)
 {
 	/*graph_queue = priority_queue_create(graph_compare_gt, graph_delete);
