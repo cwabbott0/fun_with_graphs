@@ -1,6 +1,4 @@
-#include "graph.h"
-#include "hash_set.h"
-#include "priority_queue.h"
+#include "level.h"
 #include <stdio.h>
 
 int geng(int argc, char *argv[]); //entry point for geng
@@ -52,7 +50,7 @@ int main(void)
 		print_graph(*g);
 		graph_info_destroy(g);
 	}*/
-	test_add_edges();
+	test_extend_graph();
 	return 0;
 }
 
