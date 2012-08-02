@@ -80,6 +80,34 @@ level *level_create(unsigned n, unsigned p, unsigned max_k)
 	return ret;
 }
 
+void level_delete(level *my_level)
+{
+	for(int i = 0; i < my_level->num_m; i++)
+		hash_set_delete(my_level->sets[i]);
+	free(my_level->sets);
+	
+	for(int i = 0; i < my_level->num_m; i++)
+		priority_queue_delete(my_level->queues[i]);
+	free(my_level->queues);
+	
+	free(my_level);
+}
+
+void level_empty_and_print(level *my_level)
+{
+	printf("For n = %u", my_level->n);
+	for(int i = 0; i < my_level->num_m; i++)
+	{
+		printf("m = %u:", i + my_level->min_m);
+		while(priority_queue_num_elems(my_level->queues[i]))
+		{
+			graph_info *g = priority_queue_pull(my_level->queues[i]);
+			print_graph(*g);
+			graph_info_destroy(g);
+		}
+	}
+}
+
 static void init_extended(graph_info input, graph_info *extended)
 {
 	extended->n = (input.n+1);
