@@ -125,7 +125,7 @@ graph_info *graph_info_from_nauty(graph *g, int n)
 		for (int j = 0; j < n; j++) {
 			if(i == j)
 				ret->distances[n*i + j] = 0;
-			else if(ISELEMENT(g + i*m, j))
+			else if(ISELEMENT(GRAPHROW(g, i, m), j))
 			{
 				ret->distances[n*i + j] = 1;
 				ret->k[i]++;

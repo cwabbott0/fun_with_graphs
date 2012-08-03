@@ -58,6 +58,8 @@ unsigned graph_sizes[] = {
 
 int main(void)
 {
+	printf("%d\n", MAXM);
+	
 	//find n for geng
 	unsigned n = 3;
 	while(graph_sizes[n] <= P)
@@ -70,7 +72,7 @@ int main(void)
 		return 1;
 	
 	//Main loop
-	for(; n < 14; n++)
+	for(; n < 65; n++)
 	{
 		printf("n = %u\n", n);
 		level *new_level = level_create(n + 1, P, MAX_K);
@@ -95,8 +97,9 @@ int main(void)
 	for(int i = 0; i < cur_level->num_m; i++)
 	{
 		if(best_graph == NULL ||
-		   best_graphs[i]->sum_of_distances < best_graph->sum_of_distances ||
-		   best_graphs[i]->diameter < best_graph->diameter)
+		   (best_graphs[i] != NULL &&
+		   (best_graphs[i]->sum_of_distances < best_graph->sum_of_distances ||
+		   best_graphs[i]->diameter < best_graph->diameter)))
 			best_graph = best_graphs[i];
 	}
 	
