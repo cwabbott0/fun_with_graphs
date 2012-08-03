@@ -72,7 +72,7 @@ int main(void)
 		return 1;
 	
 	//Main loop
-	for(; n < 65; n++)
+	for(; n < 14; n++)
 	{
 		printf("n = %u\n", n);
 		level *new_level = level_create(n + 1, P, MAX_K);

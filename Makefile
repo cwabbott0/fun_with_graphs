@@ -15,7 +15,8 @@ nauty24r2/Makefile: nauty24r2/configure
 geng.o: nauty nauty24r2/geng.c
 	$(CC) -c nauty24r2/geng.c -o geng.o -DMAXN=32 -DGENG_MAIN=$(GENG_MAIN) -DOUTPROC=geng_callback
 
-graph.o main.o: graph.h
+graph.o main.o level.o: graph.h
+level.o main.o: level.h
 
 %.o: %.c
 	$(CC) -c $< -o $@ $(CFLAGS)
