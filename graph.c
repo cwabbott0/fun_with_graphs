@@ -167,10 +167,10 @@ graph_info *new_graph_info(graph_info src)
 	ret->distances = malloc(ret->n * ret->n * sizeof(*ret->distances));
 	ret->nauty_graph = malloc(ret->n * m * sizeof(setword));
 	ret->k = malloc(ret->n * sizeof(*ret->k));
-	ret->k = src.k;
 	ret->m = src.m;
 	ret->max_k = src.max_k;
 	memcpy(ret->distances, src.distances, src.n * src.n * sizeof(*src.distances));
+	memcpy(ret->k, src.k, src.n * sizeof(int));
 	memcpy(ret->nauty_graph, src.nauty_graph, src.n * m * sizeof(setword));
 	return ret;
 }

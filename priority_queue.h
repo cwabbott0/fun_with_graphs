@@ -18,6 +18,7 @@ void priority_queue_delete(priority_queue *queue);
 unsigned priority_queue_num_elems(priority_queue *queue);
 bool priority_queue_push(priority_queue *queue, void *elem);
 void *priority_queue_pull(priority_queue *queue);
+void *priority_queue_peek(priority_queue* queue);
 void priority_queue_test(void);
 
 

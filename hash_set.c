@@ -29,7 +29,7 @@ static bool bucket_add(_bucket_t *bucket, void *ptr, compare_func compare)
 	while (true)
 	{
 		if (compare(bucket->ptr, ptr))
-			return true;
+			return false;
 		if (!bucket->next)
 			// This is the last bucket in the list,
 			// break early so we can add to the list

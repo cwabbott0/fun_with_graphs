@@ -59,12 +59,15 @@ static void graph_delete(void *elem)
 
 level *level_create(unsigned n, unsigned p, unsigned max_k)
 {
+	//make sure max_k is sane
+	if(max_k < 2 || max_k > (n - 1))
+		return NULL;
 	level *ret = malloc(sizeof(level));
 	ret->n = n;
 	ret->p = p;
 	ret->max_k = max_k;
 	ret->min_m = n - 1;
-	ret->num_m = (n * (n - 1) / 2) - ret->min_m;
+	ret->num_m = (n * max_k / 2) - ret->min_m + 1;
 	
 	ret->sets = malloc(ret->num_m * sizeof(hash_set*));
 	ret->queues = malloc(ret->num_m * sizeof(priority_queue*));
@@ -95,10 +98,10 @@ void level_delete(level *my_level)
 
 void level_empty_and_print(level *my_level)
 {
-	printf("For n = %u", my_level->n);
+	printf("For n = %u\n", my_level->n);
 	for(int i = 0; i < my_level->num_m; i++)
 	{
-		printf("m = %u:", i + my_level->min_m);
+		printf("m = %u:\n", i + my_level->min_m);
 		while(priority_queue_num_elems(my_level->queues[i]))
 		{
 			graph_info *g = priority_queue_pull(my_level->queues[i]);
@@ -106,6 +109,49 @@ void level_empty_and_print(level *my_level)
 			graph_info_destroy(g);
 		}
 	}
+}
+
+bool add_graph_to_level(graph_info *new_graph, level *my_level)
+{
+	unsigned i = new_graph->m - my_level->min_m;
+	
+	if(priority_queue_num_elems(my_level->queues[i]) >= my_level->p &&
+	   graph_compare_gt(new_graph,
+						   priority_queue_peek(my_level->queues[i])))
+		return false;
+	
+	int m = (new_graph->n + WORDSIZE - 1) / WORDSIZE;
+	
+	DEFAULTOPTIONS_GRAPH(options);
+	statsblk stats;
+	setword workspace[m * 50];
+	int lab[new_graph->n], ptn[new_graph->n], orbits[new_graph->n];
+	graph *gcan = malloc(new_graph->n * m * sizeof(setword));
+	
+	options.getcanon = true;
+	
+	nauty(new_graph->nauty_graph, lab, ptn, NULL, orbits,
+		  &options, &stats, workspace, 50 * m, m, new_graph->n, gcan);
+	
+	nauty_graph_with_n *set_entry = malloc(sizeof(nauty_graph_with_n));
+	set_entry->n = new_graph->n;
+	set_entry->g = gcan;
+	if(!hash_set_add(my_level->sets[i], set_entry))
+	{
+		//this graph already exists
+		free(gcan);
+		free(set_entry);
+		return false;
+	}
+	
+	priority_queue_push(my_level->queues[i], new_graph);
+	if(priority_queue_num_elems(my_level->queues[i]) > my_level->p)
+	{
+		graph_info *g = priority_queue_pull(my_level->queues[i]);
+		graph_info_destroy(g);
+	}
+	
+	return true;
 }
 
 static void init_extended(graph_info input, graph_info *extended)
@@ -152,7 +198,8 @@ static void destroy_extended(graph_info extended)
 	free(extended.k);
 }
 
-static void add_edges(graph_info *g, unsigned start, int extended_m)
+static void add_edges(graph_info *g, unsigned start, int extended_m,
+					  level *my_level)
 {
 	//setup m and k[n] for the children
 	//note that these values will not change b/w each child
@@ -165,14 +212,14 @@ static void add_edges(graph_info *g, unsigned start, int extended_m)
 	
 	//if the child has a node of degree greater than MAX_K,
 	//don't search it
-	if(g->k[g->n - 1] <= MAX_K)
+	if(g->k[g->n - 1] <= my_level->max_k)
 	{
 		for(unsigned i = start; i < g->n - 1; i++)
 		{
 			g->k[i]++;
 			
 			//same as comment above
-			if(g->k[i] <= MAX_K)
+			if(g->k[i] <= my_level->max_k)
 			{
 				unsigned old_max_k = g->max_k;
 				if(g->k[i] > g->max_k)
@@ -182,7 +229,7 @@ static void add_edges(graph_info *g, unsigned start, int extended_m)
 				ADDELEMENT(GRAPHROW(g->nauty_graph, i, extended_m), g->n-1);
 				ADDELEMENT(GRAPHROW(g->nauty_graph, g->n-1, extended_m), i);
 				
-				add_edges(g, i + 1, extended_m);
+				add_edges(g, i + 1, extended_m, my_level);
 				
 				DELELEMENT(GRAPHROW(g->nauty_graph, i, extended_m), g->n-1);
 				DELELEMENT(GRAPHROW(g->nauty_graph, g->n-1, extended_m), i);
@@ -205,7 +252,8 @@ static void add_edges(graph_info *g, unsigned start, int extended_m)
 		fill_dist_matrix(*temporary); 
 		temporary->diameter = calc_diameter(*temporary); 
 		temporary->sum_of_distances = calc_sum(*temporary); 
-		print_graph(*temporary);
+		if(!add_graph_to_level(temporary, my_level))
+			graph_info_destroy(temporary);
 	}
 }
 
@@ -214,7 +262,7 @@ void extend_graph_and_add_to_level(graph_info input, level *new_level)
 	graph_info extended;
 	init_extended(input, &extended);
 	
-	add_edges(&extended, 0, (extended.n + WORDSIZE - 1) / WORDSIZE);
+	add_edges(&extended, 0, (extended.n + WORDSIZE - 1) / WORDSIZE, new_level);
 }
 
 void test_extend_graph(void)
@@ -250,5 +298,11 @@ void test_extend_graph(void)
 	
 	print_graph(g);
 	
-	extend_graph_and_add_to_level(g, NULL);
+	level *my_level = level_create(6, 1000, 3);
+	
+	extend_graph_and_add_to_level(g, my_level);
+	
+	level_empty_and_print(my_level);
+	
+	level_delete(my_level);
 }

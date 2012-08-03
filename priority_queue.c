@@ -121,6 +121,13 @@ void *priority_queue_pull(priority_queue *queue)
 	return ret;
 }
 
+void *priority_queue_peek(priority_queue* queue)
+{
+	if(queue->num_elems == 0)
+		return NULL;
+	return queue->elems[0];
+}
+
 static bool compare_gt(void *arg1, void *arg2)
 {
 	return *((int*)arg1) > *((int*)arg2);

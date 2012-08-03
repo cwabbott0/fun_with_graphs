@@ -21,6 +21,7 @@ void level_delete(level *my_level);
 void level_empty_and_print(level *my_level);
 void level_extend(level *old, level *new;);
 void extend_graph_and_add_to_level(graph_info input, level *new_level);
+bool add_graph_to_level(graph_info *new_graph, level *my_level);
 void test_extend_graph(void);
 
 
