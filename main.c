@@ -79,6 +79,29 @@ int main(void)
 		cur_level = new_level;
 	}
 	
+	graph_info *best_graphs[cur_level->num_m];
+	
+	for(int i = 0; i < cur_level->num_m; i++)
+	{
+		while(priority_queue_num_elems(cur_level->queues[i]) > 1)
+		{
+			graph_info *g = priority_queue_pull(cur_level->queues[i]);
+			graph_info_destroy(g);
+		}
+		best_graphs[i] = priority_queue_peek(cur_level->queues[i]);
+	}
+	
+	graph_info *best_graph = NULL;
+	for(int i = 0; i < cur_level->num_m; i++)
+	{
+		if(best_graph == NULL ||
+		   best_graphs[i]->sum_of_distances < best_graph->sum_of_distances ||
+		   best_graphs[i]->diameter < best_graph->diameter)
+			best_graph = best_graphs[i];
+	}
+	
+	print_graph(*best_graph);
+	
 	level_delete(cur_level);
 	
 	return 0;
