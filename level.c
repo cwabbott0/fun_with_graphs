@@ -144,14 +144,22 @@ bool add_graph_to_level(graph_info *new_graph, level *my_level)
 		return false;
 	}
 	
+	_add_graph_to_level(new_graph, my_level);
+	
+	return true;
+}
+
+//Doesn't check/add to hash set
+//Used for the first level created by geng
+void _add_graph_to_level(graph_info *new_graph, level *my_level)
+{
+	unsigned i = new_graph->m - my_level->min_m;
 	priority_queue_push(my_level->queues[i], new_graph);
 	if(priority_queue_num_elems(my_level->queues[i]) > my_level->p)
 	{
 		graph_info *g = priority_queue_pull(my_level->queues[i]);
 		graph_info_destroy(g);
 	}
-	
-	return true;
 }
 
 static void init_extended(graph_info input, graph_info *extended)
@@ -263,6 +271,19 @@ void extend_graph_and_add_to_level(graph_info input, level *new_level)
 	init_extended(input, &extended);
 	
 	add_edges(&extended, 0, (extended.n + WORDSIZE - 1) / WORDSIZE, new_level);
+}
+
+void level_extend(level *old, level *new)
+{
+	for(int i = 0; i < old->num_m; i++)
+	{
+		while(priority_queue_num_elems(old->queues[i]))
+		{
+			graph_info *g = priority_queue_pull(old->queues[i]);
+			extend_graph_and_add_to_level(*g, new);
+			graph_info_destroy(g);
+		}
+	}
 }
 
 void test_extend_graph(void)

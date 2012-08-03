@@ -7,6 +7,8 @@
 //So make sure it won't overflow
 #define GRAPH_INFINITY ((int)1000000)
 //#define MAXN 1000
+//Note that if you change this you must change graph_sizes[]
+//(See main.c)
 #define MAX_K 3
 #define P 10000
 
