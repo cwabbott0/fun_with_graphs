@@ -99,7 +99,7 @@ int main(void)
 		if(best_graph == NULL ||
 		   (best_graphs[i] != NULL &&
 		   (best_graphs[i]->sum_of_distances < best_graph->sum_of_distances ||
-		   best_graphs[i]->diameter < best_graph->diameter)))
+		   (best_graphs[i]->sum_of_distances == best_graph->sum_of_distances &&best_graphs[i]->diameter < best_graph->diameter))))
 			best_graph = best_graphs[i];
 	}
 	
