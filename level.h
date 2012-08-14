@@ -5,6 +5,12 @@
 #include "hash_set.h"
 #include "priority_queue.h"
 
+#define NEW_LEVEL 0
+#define SLAVE_KILL 1
+#define SLAVE_INPUT 2
+#define SLAVE_OUTPUT 3
+#define SLAVE_REQUEST 4
+
 typedef struct {
 	unsigned min_m; // minimum m (n - 1)
 	unsigned num_m; // number of possible values of m
@@ -25,6 +31,6 @@ bool add_graph_to_level(graph_info *new_graph, level *my_level);
 void _add_graph_to_level(graph_info *new_graph, level *my_level);
 void test_extend_graph(void);
 void init_extended(graph_info input, graph_info *extended);
-
+static void add_edges(graph_info *g, unsigned start, int extended_m, int rank, int n);
 
 #endif
