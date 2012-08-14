@@ -152,7 +152,13 @@ int master(int rank, int size)
 				
 				MPI_Recv(receive_distances, (n + 1)*(n + 1), MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT, MPI_COMM_WORLD, &status);
 				MPI_Recv(receive_k, n + 1, MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT, MPI_COMM_WORLD, &status);
-				MPI_Recv(receive_nauty, ((n + 1) * ((n + WORDSIZE) / WORDSIZE) * sizeof(setword)), MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT, MPI_COMM_WORLD, &status);
+				MPI_Recv(receive_nauty,
+						 (n + 1) * ((n + WORDSIZE) / WORDSIZE),
+						 MPI_SETWORD,
+						 status.MPI_SOURCE,
+						 SLAVE_OUTPUT,
+						 MPI_COMM_WORLD,
+						 &status);
 				MPI_Recv(receive_info, 5, MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT, MPI_COMM_WORLD, &status);
 				//receive all else
 				
@@ -194,9 +200,14 @@ int master(int rank, int size)
 							send_info[3] = g->diameter;
 							send_info[4] = g->max_k;
 						busy[status.MPI_SOURCE - 1] = true;
-						MPI_Send(send_distances, n*n, MPI_INT, status.MPI_SOURCE, SLAVE_INPUT, MPI_COMM_WORLD);//Send to source
+						//Send to source
+						MPI_Send(send_distances, n*n, MPI_INT, status.MPI_SOURCE, SLAVE_INPUT, MPI_COMM_WORLD);
 						MPI_Send(send_k, n, MPI_INT, status.MPI_SOURCE, SLAVE_INPUT, MPI_COMM_WORLD);
-						MPI_Send(send_nauty, (n * ((n -1 + WORDSIZE) / WORDSIZE) * sizeof(setword)), MPI_INT, status.MPI_SOURCE, SLAVE_INPUT, MPI_COMM_WORLD);
+						MPI_Send(send_nauty, n * ((n - 1 + WORDSIZE) / WORDSIZE),
+								 MPI_SETWORD,
+								 status.MPI_SOURCE,
+								 SLAVE_INPUT,
+								 MPI_COMM_WORLD);
 						MPI_Send(send_info, 5, MPI_INT, status.MPI_SOURCE, SLAVE_INPUT, MPI_COMM_WORLD);
 						//Send all else
 						
@@ -219,7 +230,13 @@ int master(int rank, int size)
 								
 								MPI_Recv(receive_distances, (n)*(n), MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT, MPI_COMM_WORLD, &status);
 								MPI_Recv(receive_k, n, MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT, MPI_COMM_WORLD, &status);
-								MPI_Recv(receive_nauty, ((n) * ((n - 1 + WORDSIZE) / WORDSIZE) * sizeof(setword)), MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT, MPI_COMM_WORLD, &status);
+								MPI_Recv(receive_nauty,
+										 (n * (n - 1 + WORDSIZE) / WORDSIZE),
+										 MPI_SETWORD,
+										 status.MPI_SOURCE,
+										 SLAVE_OUTPUT,
+										 MPI_COMM_WORLD,
+										 &status);
 								MPI_Recv(receive_info, 5, MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT, MPI_COMM_WORLD, &status);
 								//receive all else
 								
@@ -283,19 +300,17 @@ int master(int rank, int size)
 							busy[j - 1] = true;
 							MPI_Send(send_distances, n*n, MPI_INT, j, SLAVE_INPUT, MPI_COMM_WORLD);
 							MPI_Send(send_k, n, MPI_INT, j, SLAVE_INPUT, MPI_COMM_WORLD);
-							MPI_Send(send_nauty, (n * ((n -1 + WORDSIZE) / WORDSIZE) * sizeof(setword)), MPI_INT, j, SLAVE_INPUT, MPI_COMM_WORLD);
+							MPI_Send(send_nauty,
+									 n * ((n -1 + WORDSIZE) / WORDSIZE),
+									 MPI_SETWORD,
+									 j,
+									 SLAVE_INPUT,
+									 MPI_COMM_WORLD);
 							MPI_Send(send_info, 5, MPI_INT, j, SLAVE_INPUT, MPI_COMM_WORLD);
 							break;		
 							}
 						}
-				
 					}
-
-	
-					
-
-
-
 				}
 		}
 	}
@@ -326,7 +341,7 @@ int slave(int rank)
 			case NEW_LEVEL:
 				MPI_Recv(&n, 1, MPI_INT, 0, NEW_LEVEL, MPI_COMM_WORLD, &status);
 				receive_k = realloc(receive_k, sizeof(int)*n);
-				receive_distances= realloc(receive_distances, sizeof(int)*n*n);
+				receive_distances = realloc(receive_distances, sizeof(int)*n*n);
 				receive_nauty = realloc(receive_nauty, (n) * ((n + WORDSIZE) / WORDSIZE) * sizeof(setword));
 				break;
 			case SLAVE_KILL:
@@ -341,7 +356,13 @@ int slave(int rank)
 				MPI_Recv(receive_distances, n*n, MPI_INT, 0, SLAVE_INPUT, MPI_COMM_WORLD, &status);
 				
 				MPI_Recv(receive_k, n, MPI_INT, 0, SLAVE_INPUT, MPI_COMM_WORLD, &status);
-				MPI_Recv(receive_nauty, ((n) * ((n - 1 + WORDSIZE) / WORDSIZE) * sizeof(setword)), MPI_INT, 0, SLAVE_INPUT, MPI_COMM_WORLD, &status);
+				MPI_Recv(receive_nauty,
+						 n * ((n - 1 + WORDSIZE) / WORDSIZE),
+						 MPI_SETWORD,
+						 0,
+						 SLAVE_INPUT,
+						 MPI_COMM_WORLD,
+						 &status);
 				MPI_Recv(receive_info, 5, MPI_INT, 0, SLAVE_INPUT, MPI_COMM_WORLD, &status);
 
 				g->distances = receive_distances;
@@ -355,8 +376,6 @@ int slave(int rank)
 				g->max_k = receive_info[4];				
 												
 				//construct g
-
-			
 			
 				//calculations		
 				graph_info extended;
@@ -379,29 +398,29 @@ int slave(int rank)
 int main(int argc, char* argv[])
 {
 
-MPI_Init(&argc, &argv);
-int rank, size = 0;
-MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-MPI_Comm_size(MPI_COMM_WORLD, &size);
+	MPI_Init(&argc, &argv);
+	int rank, size = 0;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
 
 
-switch(rank)
-{
-	case 0:
-				
-		master(rank, size);
-		MPI_Send(0, 0, MPI_INT, 1, SLAVE_KILL, MPI_COMM_WORLD);	
-		break;
-	default:
-		slave(rank);
-		break;
-}
+	switch(rank)
+	{
+		case 0:
+					
+			master(rank, size);
+			MPI_Send(0, 0, MPI_INT, 1, SLAVE_KILL, MPI_COMM_WORLD);	
+			break;
+		default:
+			slave(rank);
+			break;
+	}
 
-printf("I'm Done: %d/%d\n", rank, size);
+	printf("I'm Done: %d/%d\n", rank, size);
 
-MPI_Finalize();
-return 0;
+	MPI_Finalize();
+	return 0;
 }
 
 void geng_callback(FILE *file, graph *g, int n)

@@ -200,7 +200,7 @@ void init_extended(graph_info input, graph_info *extended)
 	extended->max_k = input.max_k;
 }
 
-static void add_edges(graph_info *g, unsigned start, int extended_m, int rank, int n)
+void add_edges(graph_info *g, unsigned start, int extended_m, int rank, int n)
 {
 	//setup m and k[n] for the children
 	//note that these values will not change b/w each child
@@ -257,20 +257,25 @@ static void add_edges(graph_info *g, unsigned start, int extended_m, int rank, i
 		int *send_distances = malloc(sizeof(int)*(temporary->n)*(temporary->n));
 		int send_info[5] = {0};
 		int *send_k = malloc(sizeof(int)*temporary->n);
-		int *send_nauty = malloc((temporary->n) * ((temporary->n - 1 + WORDSIZE) / WORDSIZE) * sizeof(setword));
+		graph *send_nauty = malloc((temporary->n) * ((temporary->n - 1 + WORDSIZE) / WORDSIZE) * sizeof(setword));
 		//init rest of packets
-			send_distances = temporary->distances;
-			send_k = temporary->k;
-			send_nauty = temporary->nauty_graph;
-			send_info[0] = temporary->n;
-			send_info[1] = temporary->sum_of_distances;
-			send_info[2] = temporary->m;
-			send_info[3] = temporary->diameter;
-			send_info[4] = temporary->max_k;
+		send_distances = temporary->distances;
+		send_k = temporary->k;
+		send_nauty = temporary->nauty_graph;
+		send_info[0] = temporary->n;
+		send_info[1] = temporary->sum_of_distances;
+		send_info[2] = temporary->m;
+		send_info[3] = temporary->diameter;
+		send_info[4] = temporary->max_k;
 
 		MPI_Send(send_distances, (temporary->n)*(temporary->n), MPI_INT, 0, SLAVE_OUTPUT, MPI_COMM_WORLD);
 		MPI_Send(send_k, temporary->n, MPI_INT, 0, SLAVE_OUTPUT, MPI_COMM_WORLD); 
-		MPI_Send(send_nauty, ((temporary->n) * ((temporary->n - 1 + WORDSIZE) / WORDSIZE) * sizeof(setword)), MPI_INT, 0, SLAVE_OUTPUT, MPI_COMM_WORLD);
+		MPI_Send(send_nauty,
+				 (temporary->n * (temporary->n - 1 + WORDSIZE) / WORDSIZE),
+				 MPI_SETWORD,
+				 0,
+				 SLAVE_OUTPUT,
+				 MPI_COMM_WORLD);
 		MPI_Send(send_info, 5, MPI_INT, 0, SLAVE_OUTPUT, MPI_COMM_WORLD);
 		free(send_distances);	
 		free(send_k);

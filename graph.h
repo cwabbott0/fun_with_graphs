@@ -1,6 +1,6 @@
 #ifndef GRAPH_H
 
-#define WORDSIZE 32
+//#define WORDSIZE 32
 #include "nauty.h"
 
 //Represents when there is no connection
