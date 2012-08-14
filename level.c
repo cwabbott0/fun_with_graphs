@@ -162,7 +162,7 @@ void _add_graph_to_level(graph_info *new_graph, level *my_level)
 	}
 }
 
-static void init_extended(graph_info input, graph_info *extended)
+void init_extended(graph_info input, graph_info *extended)
 {
 	extended->n = (input.n+1);
 	
@@ -206,124 +206,8 @@ static void destroy_extended(graph_info extended)
 	free(extended.k);
 }
 
-static void add_edges(graph_info *g, unsigned start, int extended_m,
-					  level *my_level)
-{
-	//setup m and k[n] for the children
-	//note that these values will not change b/w each child
-	//of this node in the search tree
-	g->m++;
-	g->k[g->n - 1]++;
-	unsigned old_max_k = g->max_k;
-	if(g->k[g->n - 1] > g->max_k)
-		g->max_k = g->k[g->n - 1];
-	
-	//if the child has a node of degree greater than MAX_K,
-	//don't search it
-	if(g->k[g->n - 1] <= my_level->max_k)
-	{
-		for(unsigned i = start; i < g->n - 1; i++)
-		{
-			g->k[i]++;
-			
-			//same as comment above
-			if(g->k[i] <= my_level->max_k)
-			{
-				unsigned old_max_k = g->max_k;
-				if(g->k[i] > g->max_k)
-					g->max_k = g->k[i];
-				
-				g->distances[g->n*i + (g->n-1)] = g->distances[g->n*(g->n-1) + i] = 1;
-				ADDELEMENT(GRAPHROW(g->nauty_graph, i, extended_m), g->n-1);
-				ADDELEMENT(GRAPHROW(g->nauty_graph, g->n-1, extended_m), i);
-				
-				add_edges(g, i + 1, extended_m, my_level);
-				
-				DELELEMENT(GRAPHROW(g->nauty_graph, i, extended_m), g->n-1);
-				DELELEMENT(GRAPHROW(g->nauty_graph, g->n-1, extended_m), i);
-				g->distances[g->n*i + (g->n-1)] = g->distances[g->n*(g->n-1) + i] = GRAPH_INFINITY;
-				g->max_k = old_max_k;
-			}
-			g->k[i]--;
-		}
-	}
-	
-	//tear down values we created in the beginning
-	g->max_k = old_max_k;
-	g->m--;
-	g->k[g->n - 1]--;
-	
-	
-	if(g->k[g->n - 1] > 0)
-	{
-		graph_info *temporary = new_graph_info(*g);
-		fill_dist_matrix(*temporary); 
-		temporary->diameter = calc_diameter(*temporary); 
-		temporary->sum_of_distances = calc_sum(*temporary); 
-		if(!add_graph_to_level(temporary, my_level))
-			graph_info_destroy(temporary);
-	}
-}
 
-void extend_graph_and_add_to_level(graph_info input, level *new_level)
-{
-	graph_info extended;
-	init_extended(input, &extended);
-	
-	add_edges(&extended, 0, (extended.n + WORDSIZE - 1) / WORDSIZE, new_level);
-}
 
-void level_extend(level *old, level *new)
-{
-	for(int i = 0; i < old->num_m; i++)
-	{
-		while(priority_queue_num_elems(old->queues[i]))
-		{
-			graph_info *g = priority_queue_pull(old->queues[i]);
-			extend_graph_and_add_to_level(*g, new);
-			graph_info_destroy(g);
-		}
-	}
-}
 
-void test_extend_graph(void)
-{
-	graph_info g;
-	int distances [25] = {
-		0, 1, 1, 2, 2,
-		1, 0, 2, 1, 3,
-		1, 2, 0, 3, 1,
-		2, 1, 3, 0, 4,
-		2, 3, 1, 4, 0,
-	};
-	int m = (4 + WORDSIZE) / WORDSIZE;
-	graph nauty_graph[m * 5];
-	for (int i = 0; i < m * 5; i++)
-		nauty_graph[i] = 0;
-	ADDELEMENT(GRAPHROW(nauty_graph, 0, m), 1);
-	ADDELEMENT(GRAPHROW(nauty_graph, 0, m), 2);
-	ADDELEMENT(GRAPHROW(nauty_graph, 1, m), 0);
-	ADDELEMENT(GRAPHROW(nauty_graph, 1, m), 3);
-	ADDELEMENT(GRAPHROW(nauty_graph, 2, m), 0);
-	ADDELEMENT(GRAPHROW(nauty_graph, 2, m), 4);
-	ADDELEMENT(GRAPHROW(nauty_graph, 3, m), 1);
-	ADDELEMENT(GRAPHROW(nauty_graph, 4, m), 2);
-	
-	g.distances = distances;
-	g.nauty_graph = nauty_graph;
-	g.n = 5;
-	int g_k[5] = {2, 2, 2, 1 ,1};
-	g.k = g_k;
-	g.m = 4;
-	g.max_k = 2;
-	
-	print_graph(g);
-	
-	level *my_level = level_create(6, 1000, 3);
-	
-	extend_graph_and_add_to_level(g, my_level);
-	
-	level_empty_and_print(my_level);
-	
-	level_delete(my_level);
-}
+
+

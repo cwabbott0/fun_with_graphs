@@ -1,6 +1,6 @@
 #ifndef GRAPH_H
 
-
+#define WORDSIZE 32
 #include "nauty.h"
 
 //Represents when there is no connection
@@ -11,8 +11,7 @@
 //Note that if you change this you must change graph_sizes[]
 //(See main.c)
 #define MAX_K 3
-#define P 100
-
+#define P 500
 
 typedef struct {
 	int n;

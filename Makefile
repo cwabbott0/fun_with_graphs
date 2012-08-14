@@ -1,4 +1,4 @@
-CC=gcc
+CC=mpicc
 GENG_MAIN=geng
 OBJECTS=main.o priority_queue.o hash_set.o graph.o level.o geng.o
 CFLAGS=-I. -I./nauty24r2 -std=c99 -g
@@ -6,10 +6,10 @@ NAUTY_OBJECTS=nauty24r2/gtools.o nauty24r2/nauty.o nauty24r2/nautil.o nauty24r2/
 
 all: fun_with_graphs
 
-nauty: nauty24r2/Makefile
+nauty: nauty24r2/makefile
 	cd nauty24r2 && make
 
-nauty24r2/Makefile: nauty24r2/configure
+nauty24r2/makefile: nauty24r2/configure
 	cd nauty24r2 && ./configure
 
 geng.o: nauty nauty24r2/geng.c

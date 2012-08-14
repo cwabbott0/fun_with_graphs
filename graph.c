@@ -3,31 +3,35 @@
 
 void print_graph(graph_info g)
 {
-	for (int i = 0; i < g.n; i++)
-	{
-		for (int j = 0; j < g.n; j++)
-			printf("%d\t", g.distances[g.n*i + j]);
-		printf("\n");
-	}
-
-	for (int i = 0; i < g.n; i++)
-		printf("%d ", g.k[i]);
-	printf("\n");
-
+/*	for (int i = 0; i < g.n; i++)
+ *	{
+ *		for (int j = 0; j < g.n; j++)
+ *			printf("%d\t", g.distances[g.n*i + j]);
+ *		printf("\n");
+ *	}
+ *
+ *	for (int i = 0; i < g.n; i++)
+ *		printf("%d ", g.k[i]);
+ *	printf("\n");
+ */
 	unsigned m = (g.n + WORDSIZE - 1) / WORDSIZE;
+	printf("GraphPlot3D[{");	
 	for(int i = 0; i < g.n; i++)
 	{
-		for(int j = 0; j < g.n; j++)
+		for(int j = i + 1; j < g.n; j++)
 		{
 			if(ISELEMENT(GRAPHROW(g.nauty_graph, i, m), j))
-				printf("1, ");
-			else
-				printf("0, ");
+				printf("%d->%d,", i, j);
+
+				//printf("1, ");
+			//else
+				//printf("0, ");
+				
 		}
-		printf("\n");
+		//printf("\n");
 	}
-	printf("\n");
-	printf("K: %d, D: %d, S: %d, M: %d\n", g.max_k, g.diameter, g.sum_of_distances, g.m);
+	printf("}] \n");
+	//printf("K: %d, D: %d, S: %d, M: %d\n\n", g.max_k, g.diameter, g.sum_of_distances, g.m);
 }
 
 
