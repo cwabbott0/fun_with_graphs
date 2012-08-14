@@ -1,6 +1,7 @@
 #include "level.h"
 #include "naututil.h"
 #include <string.h>
+#include <mpi.h>
 
 //type for the hash set
 //we need to know n so we can compare & hash
@@ -198,6 +199,85 @@ void init_extended(graph_info input, graph_info *extended)
 	extended->m = input.m;
 	extended->max_k = input.max_k;
 }
+
+static void add_edges(graph_info *g, unsigned start, int extended_m, int rank, int n)
+{
+	//setup m and k[n] for the children
+	//note that these values will not change b/w each child
+	//of this node in the search tree
+	printf("Hi from %d\n", rank);
+	g->m++;
+	g->k[g->n - 1]++;
+	unsigned old_max_k = g->max_k;
+	if(g->k[g->n - 1] > g->max_k)
+		g->max_k = g->k[g->n - 1];
+	
+	//if the child has a node of degree greater than MAX_K,
+	//don't search it
+	if(g->k[g->n - 1] <= MAX_K)
+	{
+		for(unsigned i = start; i < g->n - 1; i++)
+		{
+			g->k[i]++;
+			
+			//same as comment above
+			if(g->k[i] <= MAX_K)
+			{
+				unsigned old_max_k = g->max_k;
+				if(g->k[i] > g->max_k)
+					g->max_k = g->k[i];
+				
+				g->distances[g->n*i + (g->n-1)] = g->distances[g->n*(g->n-1) + i] = 1;
+				ADDELEMENT(GRAPHROW(g->nauty_graph, i, extended_m), g->n-1);
+				ADDELEMENT(GRAPHROW(g->nauty_graph, g->n-1, extended_m), i);
+				
+				add_edges(g, i + 1, extended_m, rank, n);
+				
+				DELELEMENT(GRAPHROW(g->nauty_graph, i, extended_m), g->n-1);
+				DELELEMENT(GRAPHROW(g->nauty_graph, g->n-1, extended_m), i);
+				g->distances[g->n*i + (g->n-1)] = g->distances[g->n*(g->n-1) + i] = GRAPH_INFINITY;
+				g->max_k = old_max_k;
+			}
+			g->k[i]--;
+		}
+	}
+	
+	//tear down values we created in the beginning
+	g->max_k = old_max_k;
+	g->m--;
+	g->k[g->n - 1]--;
+	
+	
+	if(g->k[g->n - 1] > 0)
+	{
+		graph_info *temporary = new_graph_info(*g);
+		fill_dist_matrix(*temporary); 
+		temporary->diameter = calc_diameter(*temporary); 
+		temporary->sum_of_distances = calc_sum(*temporary); 
+		int *send_distances = malloc(sizeof(int)*(temporary->n)*(temporary->n));
+		int send_info[5] = {0};
+		int *send_k = malloc(sizeof(int)*temporary->n);
+		int *send_nauty = malloc((temporary->n) * ((temporary->n - 1 + WORDSIZE) / WORDSIZE) * sizeof(setword));
+		//init rest of packets
+			send_distances = temporary->distances;
+			send_k = temporary->k;
+			send_nauty = temporary->nauty_graph;
+			send_info[0] = temporary->n;
+			send_info[1] = temporary->sum_of_distances;
+			send_info[2] = temporary->m;
+			send_info[3] = temporary->diameter;
+			send_info[4] = temporary->max_k;
+
+		MPI_Send(send_distances, (temporary->n)*(temporary->n), MPI_INT, 0, SLAVE_OUTPUT, MPI_COMM_WORLD);
+		MPI_Send(send_k, temporary->n, MPI_INT, 0, SLAVE_OUTPUT, MPI_COMM_WORLD); 
+		MPI_Send(send_nauty, ((temporary->n) * ((temporary->n - 1 + WORDSIZE) / WORDSIZE) * sizeof(setword)), MPI_INT, 0, SLAVE_OUTPUT, MPI_COMM_WORLD);
+		MPI_Send(send_info, 5, MPI_INT, 0, SLAVE_OUTPUT, MPI_COMM_WORLD);
+		free(send_distances);	
+		free(send_k);
+		free(send_nauty);
+	}
+}
+
 
 static void destroy_extended(graph_info extended)
 {
