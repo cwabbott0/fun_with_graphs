@@ -205,7 +205,6 @@ void add_edges(graph_info *g, unsigned start, int extended_m, int rank, int n)
 	//setup m and k[n] for the children
 	//note that these values will not change b/w each child
 	//of this node in the search tree
-	printf("Hi from %d\n", rank);
 	g->m++;
 	g->k[g->n - 1]++;
 	unsigned old_max_k = g->max_k;
