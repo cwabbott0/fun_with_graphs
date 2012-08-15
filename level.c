@@ -271,6 +271,8 @@ void extend_graph_and_add_to_level(graph_info input, level *new_level)
 	init_extended(input, &extended);
 	
 	add_edges(&extended, 0, (extended.n + WORDSIZE - 1) / WORDSIZE, new_level);
+	
+	destroy_extended(extended);
 }
 
 void level_extend(level *old, level *new)
