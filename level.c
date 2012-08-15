@@ -259,14 +259,6 @@ void add_edges(graph_info *g, unsigned start, int extended_m, int rank, int n)
 	}
 }
 
-
-static void destroy_extended(graph_info extended)
-{
-	free(extended.distances);
-	free(extended.nauty_graph);
-	free(extended.k);
-}
-
 graph_info* receive_graph(int tag, int src, int n)
 {
 	MPI_Status status;

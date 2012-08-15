@@ -271,6 +271,9 @@ int slave(int rank)
 				
 				init_extended(*g, &extended);
 				add_edges(&extended, 0, (extended.n + WORDSIZE - 1) / WORDSIZE, rank, n);
+				free(extended.distances);
+				free(extended.nauty_graph);
+				free(extended.k);
 				graph_info_destroy(g);
 
 				MPI_Send(0, 0, MPI_INT, 0, SLAVE_REQUEST, MPI_COMM_WORLD);	
