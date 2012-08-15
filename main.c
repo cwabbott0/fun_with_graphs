@@ -134,10 +134,10 @@ int master(int rank, int size)
 				send_info[4] = g->max_k;
 			
 				busy[j - 1] = true;
-				MPI_Send(g->distances, n*n, MPI_INT, j, SLAVE_INPUT_DISTANCES, MPI_COMM_WORLD);
-				MPI_Send(g->k, n, MPI_INT, j, SLAVE_INPUT_K, MPI_COMM_WORLD);
-				MPI_Send(g->nauty_graph, n * ((n -1 + WORDSIZE) / WORDSIZE), MPI_SETWORD, j, SLAVE_INPUT_NAUTY, MPI_COMM_WORLD);
-				MPI_Send(send_info, 5, MPI_INT, j, SLAVE_INPUT_INFO, MPI_COMM_WORLD);
+				MPI_Send(g->distances, n*n, MPI_INT, j, SLAVE_INPUT, MPI_COMM_WORLD);
+				MPI_Send(g->k, n, MPI_INT, j, SLAVE_INPUT, MPI_COMM_WORLD);
+				MPI_Send(g->nauty_graph, n * ((n -1 + WORDSIZE) / WORDSIZE), MPI_SETWORD, j, SLAVE_INPUT, MPI_COMM_WORLD);
+				MPI_Send(send_info, 5, MPI_INT, j, SLAVE_INPUT, MPI_COMM_WORLD);
 				graph_info_destroy(g);
 				break;	
 			}
@@ -155,36 +155,14 @@ int master(int rank, int size)
 		{
 			case(SLAVE_OUTPUT):
 				
-				temporary = malloc(sizeof(graph_info));
-				temporary->distances = malloc(sizeof(int)*(n + 1)*(n + 1));
-				temporary->k = malloc(sizeof(int)*(n + 1));
-				temporary->nauty_graph = malloc((n + 1) * ((n + WORDSIZE) / WORDSIZE) * sizeof(setword));
+				temporary = receive_graph(SLAVE_OUTPUT, status.MPI_SOURCE, n + 1);
 
-				MPI_Recv(temporary->distances, (n + 1)*(n + 1), MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT, MPI_COMM_WORLD, &status);
-				MPI_Recv(temporary->k, n + 1, MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT, MPI_COMM_WORLD, &status);
-				MPI_Recv(temporary->nauty_graph,
-						 (n + 1) * ((n + WORDSIZE) / WORDSIZE),
-						 MPI_SETWORD,
-						 status.MPI_SOURCE,
-						 SLAVE_OUTPUT,
-						 MPI_COMM_WORLD,
-						 &status);
-				MPI_Recv(receive_info, 5, MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT, MPI_COMM_WORLD, &status);
-
-				temporary->n = receive_info[0];	
-				temporary->sum_of_distances = receive_info[1];	
-				temporary->m = receive_info[2];	
-				temporary->diameter = receive_info[3];	
-				temporary->max_k = receive_info[4];				
-
-					
-
-				if (!(add_graph_to_level(temporary, new_level)));
+				if (!add_graph_to_level(temporary, new_level))
 					graph_info_destroy(temporary);
-		
-		
+
 				break;	
 			case(SLAVE_REQUEST):
+				MPI_Recv(0, 0, MPI_INT, status.MPI_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
 				busy[status.MPI_SOURCE - 1] = false;
 				if (priority_queue_num_elems(cur_level->queues[cur_level->num_m - 1]))//Check if there are elements left to give out
 					for(; i < cur_level->num_m; i++)
@@ -192,21 +170,9 @@ int master(int rank, int size)
 						if(priority_queue_num_elems(cur_level->queues[i]))	
 						{
 							graph_info *g = priority_queue_pull(cur_level->queues[i]);
-							send_info[0] = g->n;
-							send_info[1] = g->sum_of_distances;
-							send_info[2] = g->m;
-							send_info[3] = g->diameter;
-							send_info[4] = g->max_k;
 							busy[status.MPI_SOURCE - 1] = true;
 							//Send to source
-							MPI_Send(g->distances, n*n, MPI_INT, status.MPI_SOURCE, SLAVE_INPUT_DISTANCES, MPI_COMM_WORLD);
-							MPI_Send(g->k, n, MPI_INT, status.MPI_SOURCE, SLAVE_INPUT_K, MPI_COMM_WORLD);
-							MPI_Send(g->nauty_graph, n * ((n - 1 + WORDSIZE) / WORDSIZE),
-									 MPI_SETWORD,
-									 status.MPI_SOURCE,
-									 SLAVE_INPUT_NAUTY,
-									 MPI_COMM_WORLD);
-							MPI_Send(send_info, 5, MPI_INT, status.MPI_SOURCE, SLAVE_INPUT_INFO, MPI_COMM_WORLD);
+							send_graph(SLAVE_INPUT, status.MPI_SOURCE, g);
 							graph_info_destroy(g);
 						
 							break;	
@@ -216,6 +182,7 @@ int master(int rank, int size)
 				{	
 					//New level
 					n++;
+					printf("n = %d\n", n);
 					MPI_Send(&n, 1, MPI_INT, status.MPI_SOURCE, NEW_LEVEL, MPI_COMM_WORLD);//New level for the current proc
 					i = 0;
 					while(worker_status(busy, size))
@@ -227,34 +194,14 @@ int master(int rank, int size)
 						{
 							case(SLAVE_OUTPUT):
 								
-								temporary = malloc(sizeof(graph_info));
-								temporary->distances = malloc(sizeof(int)*n*n);
-								temporary->k = malloc(sizeof(int)*n);
-								temporary->nauty_graph = malloc((n + 1) * ((n + WORDSIZE) / WORDSIZE) * sizeof(setword));
-								
-								MPI_Recv(temporary->distances, (n)*(n), MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT, MPI_COMM_WORLD, &status);
-								MPI_Recv(temporary->k, n, MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT, MPI_COMM_WORLD, &status);
-								MPI_Recv(temporary->nauty_graph,
-										 (n * (n - 1 + WORDSIZE) / WORDSIZE),
-										 MPI_SETWORD,
-										 status.MPI_SOURCE,
-										 SLAVE_OUTPUT,
-										 MPI_COMM_WORLD,
-										 &status);
-								MPI_Recv(receive_info, 5, MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT, MPI_COMM_WORLD, &status);
-								temporary->n = receive_info[0];	
-								temporary->sum_of_distances = receive_info[1];	
-								temporary->m = receive_info[2];	
-								temporary->diameter = receive_info[3];	
-								temporary->max_k = receive_info[4];				
-
+								temporary = receive_graph(SLAVE_OUTPUT, status.MPI_SOURCE, n);
 
 								if (!add_graph_to_level(temporary, new_level));
 									graph_info_destroy(temporary);
-								
 								break;
 
 							case(SLAVE_REQUEST):
+								MPI_Recv(0, 0, MPI_INT, status.MPI_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
 								busy[status.MPI_SOURCE - 1] = false;
 								MPI_Send(&n, 1, MPI_INT, status.MPI_SOURCE, NEW_LEVEL, MPI_COMM_WORLD);
 								break;
@@ -264,7 +211,7 @@ int master(int rank, int size)
 					level_delete(cur_level);
 					cur_level = new_level;
 
-					level *new_level = level_create(n, P, MAX_K);
+					new_level = level_create(n + 1, P, MAX_K);
 		
 					int j = 1;
 					for (; j < size; j++)
@@ -275,23 +222,7 @@ int master(int rank, int size)
 							if(priority_queue_num_elems(cur_level->queues[i]))	
 							{
 								graph_info *g = priority_queue_pull(cur_level->queues[i]);
-								send_info[0] = g->n;
-								send_info[1] = g->sum_of_distances;
-								send_info[2] = g->m;
-								send_info[3] = g->diameter;
-								send_info[4] = g->max_k;								
-			
-								busy[j - 1] = true;
-								MPI_Send(g->distances, n*n, MPI_INT, j, SLAVE_INPUT_DISTANCES, MPI_COMM_WORLD);
-								MPI_Send(g->k, n, MPI_INT, j, SLAVE_INPUT_K, MPI_COMM_WORLD);
-								MPI_Send(g->nauty_graph,
-										 n * ((n -1 + WORDSIZE) / WORDSIZE),
-										 MPI_SETWORD,
-										 j,
-										 SLAVE_INPUT_NAUTY,
-										 MPI_COMM_WORLD);
-								MPI_Send(send_info, 5, MPI_INT, j, SLAVE_INPUT_INFO, MPI_COMM_WORLD);
-								
+								send_graph(SLAVE_INPUT, j, g);
 								graph_info_destroy(g);
 								break;		
 							}
@@ -316,9 +247,6 @@ int slave(int rank)
 	while(graph_sizes[n] <= P)
 		n++;
 	int receive_info[5] = {0};
-	int *receive_k = malloc(sizeof(int)*n);
-	int *receive_distances= malloc(sizeof(int)*n*n);
-	graph *receive_nauty = malloc((n) * ((n - 1 + WORDSIZE) / WORDSIZE) * sizeof(setword));
 	int i = 0;
 	
 	while(1)
@@ -328,49 +256,22 @@ int slave(int rank)
 		{
 			case NEW_LEVEL:
 				CHECK_MPI(MPI_Recv(&n, 1, MPI_INT, 0, NEW_LEVEL, MPI_COMM_WORLD, &status));
-				receive_k = realloc(receive_k, sizeof(int)*n);
-				receive_distances = realloc(receive_distances, sizeof(int)*n*n);
-				receive_nauty = realloc(receive_nauty, (n) * ((n + WORDSIZE) / WORDSIZE) * sizeof(setword));
+				printf("n = %d (slave %d)\n", n, rank);
 				break;
 			case SLAVE_KILL:
 				return 0;
 				break;
-			case SLAVE_INPUT_DISTANCES:
+			case SLAVE_INPUT:
 			{
 				
-				graph_info *g = malloc(sizeof(graph_info));
-				g->distances = malloc(sizeof(int)*n*n);
-				g->k = malloc(sizeof(int)*n);
-				CHECK_MPI(MPI_Recv(receive_distances, n*n, MPI_INT, 0, SLAVE_INPUT_DISTANCES, MPI_COMM_WORLD, &status));
-				
-				CHECK_MPI(MPI_Recv(receive_k, n, MPI_INT, 0, SLAVE_INPUT_K, MPI_COMM_WORLD, &status));
-				CHECK_MPI(MPI_Recv(receive_nauty,
-						 n * ((n - 1 + WORDSIZE) / WORDSIZE),
-						 MPI_SETWORD,
-						 0,
-						 SLAVE_INPUT_NAUTY,
-						 MPI_COMM_WORLD,
-						 &status));
-				CHECK_MPI(MPI_Recv(receive_info, 5, MPI_INT, 0, SLAVE_INPUT_INFO, MPI_COMM_WORLD, &status));
-
-				g->distances = receive_distances;
-				
-				g->k = receive_k;
-				g->nauty_graph = receive_nauty;
-				g->n = receive_info[0];	
-				g->sum_of_distances = receive_info[1];	
-				g->m = receive_info[2];	
-				g->diameter = receive_info[3];	
-				g->max_k = receive_info[4];				
-												
-				//construct g
+				graph_info *g = receive_graph(SLAVE_INPUT, 0, n);
 			
 				//calculations		
 				graph_info extended;
 				
 				init_extended(*g, &extended);
-				
 				add_edges(&extended, 0, (extended.n + WORDSIZE - 1) / WORDSIZE, rank, n);
+				graph_info_destroy(g);
 
 				MPI_Send(0, 0, MPI_INT, 0, SLAVE_REQUEST, MPI_COMM_WORLD);	
 

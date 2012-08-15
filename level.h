@@ -4,15 +4,13 @@
 #include "graph.h"
 #include "hash_set.h"
 #include "priority_queue.h"
+#include <mpi.h>
 
 #define NEW_LEVEL 0
 #define SLAVE_KILL 1
-#define SLAVE_INPUT_DISTANCES 2
-#define SLAVE_INPUT_K 3
-#define SLAVE_INPUT_NAUTY 4
-#define SLAVE_INPUT_INFO 5
-#define SLAVE_OUTPUT 6
-#define SLAVE_REQUEST 7
+#define SLAVE_INPUT 2
+#define SLAVE_OUTPUT 3
+#define SLAVE_REQUEST 4
 
 #ifdef SETWORD_SHORT
 #define MPI_SETWORD MPI_UNSIGNED_SHORT
@@ -49,5 +47,8 @@ void _add_graph_to_level(graph_info *new_graph, level *my_level);
 void test_extend_graph(void);
 void init_extended(graph_info input, graph_info *extended);
 void add_edges(graph_info *g, unsigned start, int extended_m, int rank, int n);
+
+graph_info* receive_graph(int tag, int src, int n);
+void send_graph(int tag, int dest, graph_info* graph);
 
 #endif

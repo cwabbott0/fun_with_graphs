@@ -2,6 +2,7 @@
 #include "naututil.h"
 #include <string.h>
 #include <mpi.h>
+#include <signal.h>
 
 //type for the hash set
 //we need to know n so we can compare & hash
@@ -253,32 +254,8 @@ void add_edges(graph_info *g, unsigned start, int extended_m, int rank, int n)
 		fill_dist_matrix(*temporary); 
 		temporary->diameter = calc_diameter(*temporary); 
 		temporary->sum_of_distances = calc_sum(*temporary); 
-		int *send_distances = malloc(sizeof(int)*(temporary->n)*(temporary->n));
-		int send_info[5] = {0};
-		int *send_k = malloc(sizeof(int)*temporary->n);
-		graph *send_nauty = malloc((temporary->n) * ((temporary->n - 1 + WORDSIZE) / WORDSIZE) * sizeof(setword));
-		//init rest of packets
-		send_distances = temporary->distances;
-		send_k = temporary->k;
-		send_nauty = temporary->nauty_graph;
-		send_info[0] = temporary->n;
-		send_info[1] = temporary->sum_of_distances;
-		send_info[2] = temporary->m;
-		send_info[3] = temporary->diameter;
-		send_info[4] = temporary->max_k;
-
-		MPI_Send(send_distances, (temporary->n)*(temporary->n), MPI_INT, 0, SLAVE_OUTPUT, MPI_COMM_WORLD);
-		MPI_Send(send_k, temporary->n, MPI_INT, 0, SLAVE_OUTPUT, MPI_COMM_WORLD); 
-		MPI_Send(send_nauty,
-				 (temporary->n * (temporary->n - 1 + WORDSIZE) / WORDSIZE),
-				 MPI_SETWORD,
-				 0,
-				 SLAVE_OUTPUT,
-				 MPI_COMM_WORLD);
-		MPI_Send(send_info, 5, MPI_INT, 0, SLAVE_OUTPUT, MPI_COMM_WORLD);
-		free(send_distances);	
-		free(send_k);
-		free(send_nauty);
+		send_graph(SLAVE_OUTPUT, 0, temporary);
+		graph_info_destroy(temporary);
 	}
 }
 
@@ -290,8 +267,63 @@ static void destroy_extended(graph_info extended)
 	free(extended.k);
 }
 
+graph_info* receive_graph(int tag, int src, int n)
+{
+	MPI_Status status;
+	graph_info* g = malloc(sizeof(graph_info));
+	g->distances = malloc(n * n * sizeof(int));
+	g->k = malloc(n * sizeof(int));
+	g->nauty_graph = malloc(n * ((n + WORDSIZE - 1) / WORDSIZE) * sizeof(setword));
+	int receive_info[5];
+	MPI_Recv(g->distances,
+			 n*n,
+			 MPI_INT,
+			 src,
+			 tag, MPI_COMM_WORLD, &status);
+	MPI_Recv(g->k,
+			 n,
+			 MPI_INT, src, tag, MPI_COMM_WORLD, &status);
+	MPI_Recv(g->nauty_graph,
+			 n * ((n + WORDSIZE - 1) / WORDSIZE),
+			 MPI_SETWORD,
+			 src,
+			 tag,
+			 MPI_COMM_WORLD,
+			 &status);
+	MPI_Recv(receive_info,
+			 5, MPI_INT,
+			 src, tag, MPI_COMM_WORLD, &status);
+	
+	g->n = receive_info[0];
+	g->sum_of_distances = receive_info[1];	
+	g->m = receive_info[2];	
+	g->diameter = receive_info[3];	
+	g->max_k = receive_info[4];
+	
+	if (g->n != n)
+	{
+		fprintf(stderr, "Error: expecting graph size %d, got %d\n", n, g->n);
+		raise(SIGINT);
+	}
+	
+	return g;
+}
 
-
-
-
-
+void send_graph(int tag, int dest, graph_info* g)
+{
+	int send_info[5];
+	send_info[0] = g->n;
+	send_info[1] = g->sum_of_distances;
+	send_info[2] = g->m;
+	send_info[3] = g->diameter;
+	send_info[4] = g->max_k;
+	MPI_Send(g->distances, g->n*g->n,
+			 MPI_INT, dest, tag, MPI_COMM_WORLD);
+	MPI_Send(g->k, g->n, MPI_INT, dest, tag, MPI_COMM_WORLD);
+	MPI_Send(g->nauty_graph, g->n * ((g->n - 1 + WORDSIZE) / WORDSIZE),
+			 MPI_SETWORD,
+			 dest,
+			 tag,
+			 MPI_COMM_WORLD);
+	MPI_Send(send_info, 5, MPI_INT, dest, tag, MPI_COMM_WORLD);
+}
