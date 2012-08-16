@@ -146,19 +146,30 @@ int master(int rank, int size)
 	}
 
 	int i = 0;
-	while(n < 15)
+	while(n < 20)
 	{
 		
 		MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 		graph_info *temporary;
+		graph *gcan;
 		switch(status.MPI_TAG)
 		{
 			case(SLAVE_OUTPUT):
-				
+				gcan = malloc(n * ((n + WORDSIZE - 1) / WORDSIZE) * sizeof(setword));
 				temporary = receive_graph(SLAVE_OUTPUT, status.MPI_SOURCE, n + 1);
+				MPI_Recv(gcan,
+						 n * ((n + WORDSIZE - 1) / WORDSIZE),
+						 MPI_SETWORD,
+						 status.MPI_SOURCE,
+						 SLAVE_OUTPUT,
+						 MPI_COMM_WORLD,
+						 &status);
 
-				if (!add_graph_to_level(temporary, new_level))
+				if (!add_graph_to_level(temporary, gcan, new_level))
+				{
 					graph_info_destroy(temporary);
+					free(gcan);
+				}
 
 				break;	
 			case(SLAVE_REQUEST):
@@ -190,14 +201,25 @@ int master(int rank, int size)
 						
 						MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 						graph_info *temporary;
+						graph *gcan;
 						switch(status.MPI_TAG)
 						{
 							case(SLAVE_OUTPUT):
-								
+								gcan = malloc(n * ((n + WORDSIZE - 1) / WORDSIZE) * sizeof(setword));
 								temporary = receive_graph(SLAVE_OUTPUT, status.MPI_SOURCE, n);
+								MPI_Recv(gcan,
+										 n * ((n + WORDSIZE - 1) / WORDSIZE),
+										 MPI_SETWORD,
+										 status.MPI_SOURCE,
+										 SLAVE_OUTPUT,
+										 MPI_COMM_WORLD,
+										 &status);
 
-								if (!add_graph_to_level(temporary, new_level));
+								if (!add_graph_to_level(temporary, gcan, new_level))
+								{
+									free(gcan);
 									graph_info_destroy(temporary);
+								}
 								break;
 
 							case(SLAVE_REQUEST):

@@ -113,7 +113,7 @@ void level_empty_and_print(level *my_level)
 	}
 }
 
-bool add_graph_to_level(graph_info *new_graph, level *my_level)
+bool add_graph_to_level(graph_info *new_graph, graph *gcan, level *my_level)
 {
 	unsigned i = new_graph->m - my_level->min_m;
 	
@@ -122,26 +122,12 @@ bool add_graph_to_level(graph_info *new_graph, level *my_level)
 						   priority_queue_peek(my_level->queues[i])))
 		return false;
 	
-	int m = (new_graph->n + WORDSIZE - 1) / WORDSIZE;
-	
-	DEFAULTOPTIONS_GRAPH(options);
-	statsblk stats;
-	setword workspace[m * 50];
-	int lab[new_graph->n], ptn[new_graph->n], orbits[new_graph->n];
-	graph *gcan = malloc(new_graph->n * m * sizeof(setword));
-	
-	options.getcanon = true;
-	
-	nauty(new_graph->nauty_graph, lab, ptn, NULL, orbits,
-		  &options, &stats, workspace, 50 * m, m, new_graph->n, gcan);
-	
 	nauty_graph_with_n *set_entry = malloc(sizeof(nauty_graph_with_n));
 	set_entry->n = new_graph->n;
 	set_entry->g = gcan;
 	if(!hash_set_add(my_level->sets[i], set_entry))
 	{
 		//this graph already exists
-		free(gcan);
 		free(set_entry);
 		return false;
 	}
@@ -162,6 +148,21 @@ void _add_graph_to_level(graph_info *new_graph, level *my_level)
 		graph_info *g = priority_queue_pull(my_level->queues[i]);
 		graph_info_destroy(g);
 	}
+}
+
+static void calc_canon(graph_info *g, graph *gcan)
+{
+	int m = (g->n + WORDSIZE - 1) / WORDSIZE;
+	
+	DEFAULTOPTIONS_GRAPH(options);
+	statsblk stats;
+	setword workspace[m * 50];
+	int lab[g->n], ptn[g->n], orbits[g->n];
+	
+	options.getcanon = true;
+	
+	nauty(g->nauty_graph, lab, ptn, NULL, orbits,
+		  &options, &stats, workspace, 50 * m, m, g->n, gcan);
 }
 
 void init_extended(graph_info input, graph_info *extended)
@@ -253,8 +254,17 @@ void add_edges(graph_info *g, unsigned start, int extended_m, int rank, int n)
 		graph_info *temporary = new_graph_info(*g);
 		fill_dist_matrix(*temporary); 
 		temporary->diameter = calc_diameter(*temporary); 
-		temporary->sum_of_distances = calc_sum(*temporary); 
+		temporary->sum_of_distances = calc_sum(*temporary);
+		graph *gcan = malloc(g->n * ((g->n + WORDSIZE - 1) / WORDSIZE) * sizeof(setword));
+		calc_canon(temporary, gcan);
 		send_graph(SLAVE_OUTPUT, 0, temporary);
+		MPI_Send(gcan,
+				 g->n * ((g->n + WORDSIZE - 1) / WORDSIZE),
+				 MPI_SETWORD,
+				 0,
+				 SLAVE_OUTPUT,
+				 MPI_COMM_WORLD);
+		free(gcan);
 		graph_info_destroy(temporary);
 	}
 }
