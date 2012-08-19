@@ -43,6 +43,25 @@ static bool bucket_add(_bucket_t *bucket, void *ptr, compare_func compare)
 	return true;
 }
 
+static bool bucket_remove(_bucket_t* bucket, void* ptr, compare_func compare, delete_func delete)
+{
+	_bucket_t* bucket_prev = bucket;
+	bucket = bucket->next;
+	while (bucket)
+	{
+		if (compare(bucket->ptr, ptr))
+		{
+			bucket_prev->next = bucket->next;
+			delete(bucket->ptr);
+			free(bucket);
+			return true;
+		}
+		bucket_prev = bucket;
+		bucket = bucket->next;
+	}
+	
+	return false;
+}
 
 static bool bucket_contains(_bucket_t* bucket, void* ptr, compare_func compare)
 {
@@ -100,6 +119,34 @@ bool hash_set_add(hash_set *set, void *elem)
 	}
 	set->size++;
 	return true;
+}
+
+bool hash_set_remove(hash_set *set, void *elem)
+{
+	unsigned long hash = set->hash(elem) % set->num_buckets;
+
+	if(!set->buckets[hash])
+		return false;
+
+	_bucket_t *bucket = set->buckets[hash];
+	if(set->compare(bucket->ptr, elem))
+	{
+		set->buckets[hash] = bucket->next;
+		set->delete(bucket->ptr);
+		free(bucket);
+		set->size--;
+		return true;
+	}
+	else
+	{
+		if (bucket_remove(bucket, elem, set->compare, set->delete))
+		{
+			set->size--;
+			return true;
+		}
+	}
+	
+	return false;
 }
 
 bool hash_set_contains(hash_set *set, void *ptr)

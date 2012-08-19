@@ -25,6 +25,7 @@ hash_set *hash_set_create(unsigned table_size, hash_func hash,
 							compare_func compare, delete_func delete);
 void hash_set_delete(hash_set *set);
 bool hash_set_add(hash_set *set, void *ptr);
+bool hash_set_remove(hash_set *set, void *elem);
 bool hash_set_contains(hash_set *set, void *ptr);
 unsigned hash_set_size(hash_set *set);
 

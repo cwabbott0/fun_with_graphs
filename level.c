@@ -63,7 +63,7 @@ level *level_create(unsigned n, unsigned p, unsigned max_k)
 	
 	for(int i = 0; i < ret->num_m; i++)
 	{
-		ret->sets[i] = hash_set_create(1024, nauty_hash, nauty_compare,
+		ret->sets[i] = hash_set_create(P * 3 / 2, nauty_hash, nauty_compare,
 									   nauty_delete);
 		ret->queues[i] = priority_queue_create(graph_compare_gt,
 											   graph_delete);
@@ -145,6 +145,8 @@ void _add_graph_to_level(graph_info *new_graph, level *my_level)
 	if(priority_queue_num_elems(my_level->queues[i]) > my_level->p)
 	{
 		graph_info *g = priority_queue_pull(my_level->queues[i]);
+		if(g->gcan)
+			hash_set_remove(my_level->sets[i], g);
 		graph_info_destroy(g);
 	}
 }
@@ -167,6 +169,9 @@ static void init_extended(graph_info input, graph_info *extended)
 	}
 	for(int i = 0; i < extended_m; i++)
 		extended->nauty_graph[input.n*extended_m + i] = 0;
+	
+	
+	extended->gcan = NULL;
 	
 	extended->distances = malloc(extended->n*extended->n*sizeof(*extended->distances));
 	for(int i = 0; i < input.n; i++)
