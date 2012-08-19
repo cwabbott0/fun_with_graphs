@@ -100,6 +100,15 @@ void level_empty_and_print(level *my_level)
 	}
 }
 
+bool level_empty(level *my_level)
+{
+	int i;
+	for(i = 0; i < my_level->num_m; i++)
+		if(priority_queue_num_elems(my_level->queues[i]))
+			return false;
+	return true;
+}
+
 bool add_graph_to_level(graph_info *new_graph, level *my_level)
 {
 	unsigned i = new_graph->m - my_level->min_m;

@@ -1,4 +1,4 @@
-CC=gcc
+CC=mpicc
 GENG_MAIN=geng
 OBJECTS=main.o priority_queue.o hash_set.o graph.o level.o geng.o
 CFLAGS=-I. -I./nauty24r2 -std=c99 -g
