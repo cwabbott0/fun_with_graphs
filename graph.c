@@ -146,6 +146,7 @@ graph_info *graph_info_from_nauty(graph *g, int n)
 	ret->sum_of_distances = calc_sum(*ret);
 	ret->diameter = calc_diameter(*ret);
 	ret->nauty_graph = malloc(n * m * sizeof(graph));
+	ret->gcan = NULL;
 	memcpy(ret->nauty_graph, g, n * m * sizeof(graph));
 	
 	return ret;
@@ -156,6 +157,8 @@ void graph_info_destroy(graph_info *g)
 	free(g->distances);
 	free(g->k);
 	free(g->nauty_graph);
+	if(g->gcan)
+	  free(g->gcan);
 	free(g);
 }
 
@@ -169,8 +172,14 @@ graph_info *new_graph_info(graph_info src)
 	ret->k = malloc(ret->n * sizeof(*ret->k));
 	ret->m = src.m;
 	ret->max_k = src.max_k;
+	if(src.gcan)
+		ret->gcan = malloc(ret->n * m * sizeof(setword));
 	memcpy(ret->distances, src.distances, src.n * src.n * sizeof(*src.distances));
 	memcpy(ret->k, src.k, src.n * sizeof(int));
 	memcpy(ret->nauty_graph, src.nauty_graph, src.n * m * sizeof(setword));
+	if(src.gcan)
+		memcpy(ret->gcan, src.gcan, src.n * m * sizeof(setword));
+	else
+		ret->gcan = NULL;
 	return ret;
 }

@@ -11,7 +11,7 @@
 //Note that if you change this you must change graph_sizes[]
 //(See main.c)
 #define MAX_K 3
-#define P 50
+#define P 500
 
 
 typedef struct {
@@ -22,7 +22,7 @@ typedef struct {
 	int *k;
 	int diameter;
 	int max_k;
-	graph *nauty_graph;
+	graph *nauty_graph, *gcan;
 } graph_info;
 
 graph_info *new_graph_info(graph_info src);

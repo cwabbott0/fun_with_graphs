@@ -2,39 +2,28 @@
 #include "naututil.h"
 #include <string.h>
 
-//type for the hash set
-//we need to know n so we can compare & hash
-typedef struct {
-	unsigned n;
-	graph *g;
-} nauty_graph_with_n;
-
 //Hash set implementation/callbacks
 
 static unsigned long nauty_hash(void *elem)
 {
-	nauty_graph_with_n *_graph = elem;
-	graph *g = _graph->g;
-	int m = (_graph->n + WORDSIZE - 1) / WORDSIZE;
-	return (unsigned long) hash(g, m * _graph->n, 15);
+	graph_info *graph = elem;
+	int m = (graph->n + WORDSIZE - 1) / WORDSIZE;
+	return (unsigned long) hash(graph->gcan, m * graph->n, 15);
 }
 
 static bool nauty_compare(void *elem1, void *elem2)
 {
-	nauty_graph_with_n *graph1 = elem1, *graph2 = elem2;
+	graph_info *graph1 = elem1, *graph2 = elem2;
 	if (graph1->n != graph2->n)
 		return false;
 	
-	graph *g1 = graph1->g, *g2 = graph2->g;
+	graph *g1 = graph1->gcan, *g2 = graph2->gcan;
 	int m = (graph1->n + WORDSIZE - 1) / WORDSIZE;
 	return !memcmp(g1, g2, graph1->n * m * sizeof(setword));
 }
 
 static void nauty_delete(void *elem)
 {
-	nauty_graph_with_n *graph = elem;
-	free(graph->g);
-	free(graph);
 }
 
 //Priority queue implementation/callbacks
@@ -117,30 +106,28 @@ bool add_graph_to_level(graph_info *new_graph, level *my_level)
 	
 	if(priority_queue_num_elems(my_level->queues[i]) >= my_level->p &&
 	   graph_compare_gt(new_graph,
-						   priority_queue_peek(my_level->queues[i])))
+						priority_queue_peek(my_level->queues[i])))
 		return false;
 	
-	int m = (new_graph->n + WORDSIZE - 1) / WORDSIZE;
-	
-	DEFAULTOPTIONS_GRAPH(options);
-	statsblk stats;
-	setword workspace[m * 50];
-	int lab[new_graph->n], ptn[new_graph->n], orbits[new_graph->n];
-	graph *gcan = malloc(new_graph->n * m * sizeof(setword));
-	
-	options.getcanon = true;
-	
-	nauty(new_graph->nauty_graph, lab, ptn, NULL, orbits,
-		  &options, &stats, workspace, 50 * m, m, new_graph->n, gcan);
-	
-	nauty_graph_with_n *set_entry = malloc(sizeof(nauty_graph_with_n));
-	set_entry->n = new_graph->n;
-	set_entry->g = gcan;
-	if(!hash_set_add(my_level->sets[i], set_entry))
+	if(!new_graph->gcan)
+	{
+		int m = (new_graph->n + WORDSIZE - 1) / WORDSIZE;
+		
+		DEFAULTOPTIONS_GRAPH(options);
+		statsblk stats;
+		setword workspace[m * 50];
+		int lab[new_graph->n], ptn[new_graph->n], orbits[new_graph->n];
+		new_graph->gcan = malloc(new_graph->n * m * sizeof(setword));
+		
+		options.getcanon = true;
+		
+		nauty(new_graph->nauty_graph, lab, ptn, NULL, orbits,
+			  &options, &stats, workspace, 50 * m, m, new_graph->n, new_graph->gcan);
+	}
+
+	if(!hash_set_add(my_level->sets[i], new_graph))
 	{
 		//this graph already exists
-		free(gcan);
-		free(set_entry);
 		return false;
 	}
 	
