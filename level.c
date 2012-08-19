@@ -76,7 +76,7 @@ level *level_create(unsigned n, unsigned p, unsigned max_k)
 	
 	for(int i = 0; i < ret->num_m; i++)
 	{
-		ret->sets[i] = hash_set_create(1024, nauty_hash, nauty_compare,
+		ret->sets[i] = hash_set_create(P * 1024, nauty_hash, nauty_compare,
 									   nauty_delete);
 		ret->queues[i] = priority_queue_create(graph_compare_gt,
 											   graph_delete);

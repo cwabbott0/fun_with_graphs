@@ -115,147 +115,127 @@ int master(int rank, int size)
 	int send_info[5] = {0};
 	int receive_info[5] = {0};
 
-
-	level *new_level = level_create(n + 1, P, MAX_K);
-	int j = 1;
-
-	for (; j < size; j++)
-	{
-		int i = 0;
-		for(; i < cur_level->num_m; i++)
-		{
-			if(priority_queue_num_elems(cur_level->queues[i]))	
-			{
-				graph_info *g = priority_queue_pull(cur_level->queues[i]);
-				send_info[0] = g->n;
-				send_info[1] = g->sum_of_distances;
-				send_info[2] = g->m;
-				send_info[3] = g->diameter;
-				send_info[4] = g->max_k;
-			
-				busy[j - 1] = true;
-				MPI_Send(g->distances, n*n, MPI_INT, j, SLAVE_INPUT, MPI_COMM_WORLD);
-				MPI_Send(g->k, n, MPI_INT, j, SLAVE_INPUT, MPI_COMM_WORLD);
-				MPI_Send(g->nauty_graph, n * ((n -1 + WORDSIZE) / WORDSIZE), MPI_SETWORD, j, SLAVE_INPUT, MPI_COMM_WORLD);
-				MPI_Send(send_info, 5, MPI_INT, j, SLAVE_INPUT, MPI_COMM_WORLD);
-				graph_info_destroy(g);
-				break;	
-			}
-		}
-
-	}
-
 	int i = 0;
 	while(n < 20)
 	{
+		level *new_level = level_create(n + 1, P, MAX_K);
 		
-		MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-		graph_info *temporary;
-		graph *gcan;
-		switch(status.MPI_TAG)
+		int j = 1;
+		for (; j < size; j++)
 		{
-			case(SLAVE_OUTPUT):
-				gcan = malloc(n * ((n + WORDSIZE - 1) / WORDSIZE) * sizeof(setword));
-				temporary = receive_graph(SLAVE_OUTPUT, status.MPI_SOURCE, n + 1);
-				MPI_Recv(gcan,
-						 n * ((n + WORDSIZE - 1) / WORDSIZE),
-						 MPI_SETWORD,
-						 status.MPI_SOURCE,
-						 SLAVE_OUTPUT,
-						 MPI_COMM_WORLD,
-						 &status);
-
-				if (!add_graph_to_level(temporary, gcan, new_level))
+			int i = 0;
+			for(; i < cur_level->num_m; i++)
+			{
+				if(priority_queue_num_elems(cur_level->queues[i]))	
 				{
-					graph_info_destroy(temporary);
-					free(gcan);
+					graph_info *g = priority_queue_pull(cur_level->queues[i]);
+					//printf("master: sending graph to slave\n");
+					send_graph(SLAVE_INPUT, j, g);
+					busy[j - 1] = true;
+					graph_info_destroy(g);
+					break;		
 				}
-
-				break;	
-			case(SLAVE_REQUEST):
-				MPI_Recv(0, 0, MPI_INT, status.MPI_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
-				busy[status.MPI_SOURCE - 1] = false;
-				if (priority_queue_num_elems(cur_level->queues[cur_level->num_m - 1]))//Check if there are elements left to give out
-					for(; i < cur_level->num_m; i++)
-					{
-						if(priority_queue_num_elems(cur_level->queues[i]))	
-						{
-							graph_info *g = priority_queue_pull(cur_level->queues[i]);
-							busy[status.MPI_SOURCE - 1] = true;
-							//Send to source
-							send_graph(SLAVE_INPUT, status.MPI_SOURCE, g);
-							graph_info_destroy(g);
-						
-							break;	
-						}
-					}
-				else	//None left in the level
-				{	
-					//New level
-					n++;
-					printf("n = %d\n", n);
-					MPI_Send(&n, 1, MPI_INT, status.MPI_SOURCE, NEW_LEVEL, MPI_COMM_WORLD);//New level for the current proc
-					i = 0;
-					while(worker_status(busy, size))
-					{
-						
-						MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-						graph_info *temporary;
-						graph *gcan;
-						switch(status.MPI_TAG)
-						{
-							case(SLAVE_OUTPUT):
-								gcan = malloc(n * ((n + WORDSIZE - 1) / WORDSIZE) * sizeof(setword));
-								temporary = receive_graph(SLAVE_OUTPUT, status.MPI_SOURCE, n);
-								MPI_Recv(gcan,
-										 n * ((n + WORDSIZE - 1) / WORDSIZE),
-										 MPI_SETWORD,
-										 status.MPI_SOURCE,
-										 SLAVE_OUTPUT,
-										 MPI_COMM_WORLD,
-										 &status);
-
-								if (!add_graph_to_level(temporary, gcan, new_level))
-								{
-									free(gcan);
-									graph_info_destroy(temporary);
-								}
-								break;
-
-							case(SLAVE_REQUEST):
-								MPI_Recv(0, 0, MPI_INT, status.MPI_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
-								busy[status.MPI_SOURCE - 1] = false;
-								MPI_Send(&n, 1, MPI_INT, status.MPI_SOURCE, NEW_LEVEL, MPI_COMM_WORLD);
-								break;
-						}
-					}
-
-					level_delete(cur_level);
-					cur_level = new_level;
-
-					new_level = level_create(n + 1, P, MAX_K);
+			}
+		}
 		
-					int j = 1;
-					for (; j < size; j++)
+		bool level_done = false;
+		
+		while(!level_done)
+		{
+			MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+			graph_info *temporary;
+			graph *gcan;
+			switch(status.MPI_TAG)
+			{
+				case(SLAVE_OUTPUT):
+					gcan = malloc((n + 1) * ((n + WORDSIZE) / WORDSIZE) * sizeof(setword));
+					temporary = receive_graph(SLAVE_OUTPUT, status.MPI_SOURCE, n + 1);
+					MPI_Recv(gcan,
+							 (n + 1) * ((n + WORDSIZE) / WORDSIZE),
+							 MPI_SETWORD,
+							 status.MPI_SOURCE,
+							 SLAVE_OUTPUT,
+							 MPI_COMM_WORLD,
+							 &status);
+
+					if (!add_graph_to_level(temporary, gcan, new_level))
 					{
-						int i = 0;
+						graph_info_destroy(temporary);
+						free(gcan);
+					}
+
+					break;	
+				case(SLAVE_REQUEST):
+					MPI_Recv(0, 0, MPI_INT, status.MPI_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
+					busy[status.MPI_SOURCE - 1] = false;
+					//printf("master: got slave request\n");
+					if (priority_queue_num_elems(cur_level->queues[cur_level->num_m - 1]))//Check if there are elements left to give out
 						for(; i < cur_level->num_m; i++)
 						{
 							if(priority_queue_num_elems(cur_level->queues[i]))	
 							{
 								graph_info *g = priority_queue_pull(cur_level->queues[i]);
-								send_graph(SLAVE_INPUT, j, g);
+								busy[status.MPI_SOURCE - 1] = true;
+								//Send to source
+								//printf("master: sending graph to slave 2\n");
+								send_graph(SLAVE_INPUT, status.MPI_SOURCE, g);
 								graph_info_destroy(g);
-								break;		
+							
+								break;	
 							}
 						}
+					else	//None left in the level
+					{	
+						//New level
+						n++;
+						printf("n = %d\n", n);
+						MPI_Send(&n, 1, MPI_INT, status.MPI_SOURCE, NEW_LEVEL, MPI_COMM_WORLD);//New level for the current proc
+						i = 0;
+						while(worker_status(busy, size - 1))
+						{
+							
+							MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+							graph_info *temporary;
+							graph *gcan;
+							switch(status.MPI_TAG)
+							{
+								case(SLAVE_OUTPUT):
+									gcan = malloc(n * ((n + WORDSIZE - 1) / WORDSIZE) * sizeof(setword));
+									temporary = receive_graph(SLAVE_OUTPUT, status.MPI_SOURCE, n);
+									MPI_Recv(gcan,
+											 n * ((n + WORDSIZE - 1) / WORDSIZE),
+											 MPI_SETWORD,
+											 status.MPI_SOURCE,
+											 SLAVE_OUTPUT,
+											 MPI_COMM_WORLD,
+											 &status);
+
+									if (!add_graph_to_level(temporary, gcan, new_level))
+									{
+										free(gcan);
+										graph_info_destroy(temporary);
+									}
+									break;
+
+								case(SLAVE_REQUEST):
+									MPI_Recv(0, 0, MPI_INT, status.MPI_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
+									busy[status.MPI_SOURCE - 1] = false;
+									MPI_Send(&n, 1, MPI_INT, status.MPI_SOURCE, NEW_LEVEL, MPI_COMM_WORLD);
+									break;
+							}
+						}
+						level_done = true;
 					}
-				}
+			}
 		}
+		level_delete(cur_level);
+		cur_level = new_level;
 	}
 	i = 1;
 	for (; i < size; i++)
-		MPI_Send(0, 0, MPI_INT, i, SLAVE_KILL, MPI_COMM_WORLD);	
+		MPI_Send(0, 0, MPI_INT, i, SLAVE_KILL, MPI_COMM_WORLD);
+	
+	level_delete(cur_level);
 
 	return 0;
 }
@@ -285,7 +265,7 @@ int slave(int rank)
 				break;
 			case SLAVE_INPUT:
 			{
-				
+				//printf("slave got input\n");
 				graph_info *g = receive_graph(SLAVE_INPUT, 0, n);
 			
 				//calculations		
@@ -298,7 +278,8 @@ int slave(int rank)
 				free(extended.k);
 				graph_info_destroy(g);
 
-				MPI_Send(0, 0, MPI_INT, 0, SLAVE_REQUEST, MPI_COMM_WORLD);	
+				//printf("Slave done, sending request\n");
+				MPI_Send(0, 0, MPI_INT, 0, SLAVE_REQUEST, MPI_COMM_WORLD);
 
 				break;
 			}
