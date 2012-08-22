@@ -87,16 +87,12 @@ static graph_info* receive_graph(int tag, int src, int n, bool canon)
 		g->gcan = malloc(n * ((n + WORDSIZE - 1) / WORDSIZE) * sizeof(setword));
 	else
 		g->gcan = NULL;
-	int receive_info[5];
 
 	MPI_Recv(g->distances,
 			 n*n,
 			 MPI_INT,
 			 src,
 			 tag, MPI_COMM_WORLD, &status);
-	MPI_Recv(g->k,
-			 n,
-			 MPI_INT, src, tag, MPI_COMM_WORLD, &status);
 	MPI_Recv(g->nauty_graph,
 			 n * ((n + WORDSIZE - 1) / WORDSIZE),
 			 MPI_SETWORD,
@@ -112,15 +108,13 @@ static graph_info* receive_graph(int tag, int src, int n, bool canon)
 				 tag,
 				 MPI_COMM_WORLD,
 				 &status);
-	MPI_Recv(receive_info,
-			 5, MPI_INT,
-			 src, tag, MPI_COMM_WORLD, &status);
 
-	g->n = receive_info[0];
-	g->sum_of_distances = receive_info[1];	
-	g->m = receive_info[2];	
-	g->diameter = receive_info[3];	
-	g->max_k = receive_info[4];
+	g->n = n;
+	calc_k(*g);
+	g->sum_of_distances = calc_sum(*g);	
+	g->m = calc_m(*g);	
+	g->diameter = calc_diameter(*g);	
+	g->max_k = calc_max_k(*g);
 
 	assert(g->n == n);
 
@@ -129,15 +123,8 @@ static graph_info* receive_graph(int tag, int src, int n, bool canon)
 
 static void send_graph(int tag, int dest, graph_info* g, bool canon)
 {
-	int send_info[5];
-	send_info[0] = g->n;
-	send_info[1] = g->sum_of_distances;
-	send_info[2] = g->m;
-	send_info[3] = g->diameter;
-	send_info[4] = g->max_k;
 	MPI_Send(g->distances, g->n*g->n,
 			 MPI_INT, dest, tag, MPI_COMM_WORLD);
-	MPI_Send(g->k, g->n, MPI_INT, dest, tag, MPI_COMM_WORLD);
 	MPI_Send(g->nauty_graph, g->n * ((g->n - 1 + WORDSIZE) / WORDSIZE),
 			 MPI_SETWORD,
 			 dest,
@@ -149,7 +136,6 @@ static void send_graph(int tag, int dest, graph_info* g, bool canon)
 			 dest,
 			 tag,
 			 MPI_COMM_WORLD);
-	MPI_Send(send_info, 5, MPI_INT, dest, tag, MPI_COMM_WORLD);
 }
 
 bool slaves_done(bool *slave_done, int num_slaves)

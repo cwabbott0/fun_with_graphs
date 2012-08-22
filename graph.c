@@ -111,6 +111,37 @@ int calc_diameter(graph_info g)
 	return diameter;
 }
 
+int calc_k(graph_info g)
+{
+	int m = (g.n + WORDSIZE - 1) / WORDSIZE;
+	int i, j;
+	for(i = 0; i < g.n; i++)
+	{
+		g.k[i] = 0;
+		for(j = 0; j < m; j++)
+			g.k[i] += POPCOUNT(g.nauty_graph[i*m + j]);
+	}
+}
+
+int calc_max_k(graph_info g)
+{
+	int max_k = g.k[0];
+	int i;
+	for(i = 1; i < g.n; i++)
+		if(g.k[i] > g.max_k)
+			max_k = g.k[i];
+	return max_k;
+}
+
+int calc_m(graph_info g)
+{
+	int sum = 0;
+	int i;
+	for(i = 0; i < g.n; i++)
+		sum += g.k[i];
+	return sum / 2;
+}
+
 graph_info *graph_info_from_nauty(graph *g, int n)
 {
 	graph_info *ret = malloc(sizeof(graph_info));

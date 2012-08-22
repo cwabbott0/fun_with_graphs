@@ -33,6 +33,9 @@ void fill_dist_matrix(graph_info g);
 void print_graph(graph_info g);
 int calc_sum(graph_info g);
 int calc_diameter(graph_info g);
+int calc_k(graph_info g);
+int calc_max_k(graph_info g);
+int calc_m(graph_info g);
 
 
 #define GRAPH_H
