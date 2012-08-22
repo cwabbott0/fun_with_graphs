@@ -25,8 +25,8 @@ fun_with_graphs: $(OBJECTS) $(NAUTY_OBJECTS)
 	$(CC) $(OBJECTS) $(NAUTY_OBJECTS) -o $@
 
 clean:
-	rm *.o
-	rm fun_with_graphs
+	rm -f *.o
+	rm -f fun_with_graphs
 	cd nauty24r2 && make clean
 
 .PHONY: all nauty clean
