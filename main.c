@@ -152,13 +152,56 @@ static void send_graph(int tag, int dest, graph_info* g, bool canon)
 	MPI_Send(send_info, 5, MPI_INT, dest, tag, MPI_COMM_WORLD);
 }
 
-bool slaves_done(bool *slave_done, int num_slaves)
+static bool slaves_done(bool *slave_done, int num_slaves)
 {
 	int i;
 	for(i = 0; i < num_slaves; i++)
 		if(!slave_done[i])
 			return false;
 	return true;
+}
+
+static void send_graphs(level *my_level, int dest)
+{
+	int i;
+	for(i = 0; i < my_level->num_m; i++)
+	{
+		int num_elems = priority_queue_num_elems(my_level->queues[i]);
+		MPI_Send(&num_elems,
+				 1,
+				 MPI_INT,
+				 dest,
+				 SLAVE_OUTPUT,
+				 MPI_COMM_WORLD);
+		while(priority_queue_num_elems(my_level->queues[i]))
+		{
+			graph_info *g = priority_queue_pull(my_level->queues[i]);
+			send_graph(SLAVE_OUTPUT, dest, g, true);
+			graph_info_destroy(g);
+		}
+	}
+}
+
+static void receive_graphs(level *new_level, int src, int n)
+{
+	MPI_Status status;
+	int i, j;
+	for(i = 0; i < new_level->num_m; i++)
+	{
+		int size;
+		MPI_Recv(&size, 1,
+				 MPI_INT,
+				 src,
+				 SLAVE_OUTPUT,
+				 MPI_COMM_WORLD,
+				 &status);
+		for(j = 0; j < size; j++)
+		{
+			graph_info *g = receive_graph(SLAVE_OUTPUT, src, n, true);
+			if(!add_graph_to_level(g, new_level))
+				graph_info_destroy(g);
+		}
+	}
 }
 
 static void master(int size)
@@ -176,7 +219,7 @@ static void master(int size)
 	call_geng(n, MAX_K);
 	
 	//Main loop
-	while(n < 20)
+	while(n < 13)
 	{
 		printf("n = %u\n", n);
 		level *new_level = level_create(n + 1, P, MAX_K);
@@ -222,23 +265,7 @@ static void master(int size)
 					break;
 				case SLAVE_OUTPUT:
 				{
-					int i, j;
-					for(i = 0; i < new_level->num_m; i++)
-					{
-						int size;
-						MPI_Recv(&size, 1,
-								 MPI_INT,
-								 status.MPI_SOURCE,
-								 SLAVE_OUTPUT,
-								 MPI_COMM_WORLD,
-								 &status);
-						for(j = 0; j < size; j++)
-						{
-							graph_info *g = receive_graph(SLAVE_OUTPUT, status.MPI_SOURCE, n, true);
-							if(!add_graph_to_level(g, new_level))
-								graph_info_destroy(g);
-						}
-					}
+					receive_graphs(new_level, status.MPI_SOURCE, n);
 					slave_done[status.MPI_SOURCE - 1] = true;
 					break;
 				}
@@ -281,7 +308,118 @@ static void master(int size)
 	level_delete(cur_level);
 }
 
-static void slave(int rank)
+static void master_slave(int rank, int master, int slave_start, int num_slaves)
+{
+	bool requesting_slaves[num_slaves];
+	bool slave_done[num_slaves];
+	bool sending_request = false;
+	MPI_Status status;
+	unsigned n = 3;
+	while(graph_sizes[n] <= P)
+		n++;
+	
+	level *my_level = level_create(n + 1, P, MAX_K);
+	
+	int i;
+	
+	for(i = 0; i < num_slaves; i++)
+		requesting_slaves[i] = true;
+	
+	while(true)
+	{
+		MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		switch(status.MPI_TAG)
+		{
+			//From master
+			case SLAVE_KILL:
+				for(i = 0; i < num_slaves; i++)
+					MPI_Send(0, 0, MPI_INT, i + slave_start, SLAVE_KILL, MPI_COMM_WORLD);
+				level_delete(my_level);
+				return;
+			
+			//From master
+			case SLAVE_INPUT:
+				sending_request = false;
+				graph_info *g = receive_graph(SLAVE_INPUT, master, n, false);
+				for(i = 0; i < num_slaves; i++)
+					if(requesting_slaves[i])
+					{
+						send_graph(SLAVE_INPUT, slave_start + i, g, false);
+						requesting_slaves[i] = false;
+						break;
+					}
+				for(i++; i < num_slaves; i++)
+					if(requesting_slaves[i])
+					{
+						MPI_Send(0, 0, MPI_INT, master, SLAVE_REQUEST, MPI_COMM_WORLD);
+						sending_request = true;
+						break;
+					}
+				break;
+			
+			//From master
+			case NEW_LEVEL:
+				MPI_Recv(&n, 1, MPI_INT, status.MPI_SOURCE, NEW_LEVEL, MPI_COMM_WORLD, &status);
+				
+				//Any outstanding requests must be matched with NEW_LEVEL
+				for(i = 0; i < num_slaves; i++)
+					if(requesting_slaves[i])
+						MPI_Send(&n, 1, MPI_INT, slave_start + i, NEW_LEVEL, MPI_COMM_WORLD);
+				
+				for(i = 0; i < num_slaves; i++)
+					slave_done[i] = false;
+				
+				//Answer any new requests with NEW_LEVEL and collect all outputs
+				while(!slaves_done(slave_done, num_slaves))
+				{
+					MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+					switch(status.MPI_TAG)
+					{
+						case SLAVE_REQUEST:
+							MPI_Recv(0, 0, MPI_INT, status.MPI_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
+							MPI_Send(&n, 1, MPI_INT, status.MPI_SOURCE, NEW_LEVEL, MPI_COMM_WORLD);
+							break;
+						case SLAVE_OUTPUT:
+						{
+							receive_graphs(my_level, status.MPI_SOURCE, n);
+							slave_done[status.MPI_SOURCE - slave_start] = true;
+							break;
+						}
+					}
+				}
+				
+				//Send collected graphs back to master
+				send_graphs(my_level, master);
+				level_delete(my_level);
+				my_level = level_create(n + 1, P, MAX_K);
+				
+				//Reset requesting_slaves
+				for(i = 0; i < num_slaves; i++)
+					requesting_slaves[i] = true;
+				
+				printf("n = %d (master_slave %d)\n", n, rank);
+				
+				break;
+			
+			//From slave
+			case SLAVE_REQUEST:
+				MPI_Recv(0, 0, MPI_INT, status.MPI_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
+				requesting_slaves[status.MPI_SOURCE - slave_start] = true;
+				if(!sending_request)
+				{
+					MPI_Send(0, 0, MPI_INT, master, SLAVE_REQUEST, MPI_COMM_WORLD);
+					sending_request = true;
+				}
+				break;
+				
+				
+			default:
+				break;
+		}
+	}
+}
+
+static void slave(int rank, int master)
 {
 	MPI_Status status;
 	unsigned n = 3;
@@ -292,28 +430,13 @@ static void slave(int rank)
 	
 	while(true)
 	{
-		MPI_Probe(0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		MPI_Probe(master, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 		switch(status.MPI_TAG)
 		{
 			case NEW_LEVEL:
-				MPI_Recv(&n, 1, MPI_INT, 0, NEW_LEVEL, MPI_COMM_WORLD, &status);
+				MPI_Recv(&n, 1, MPI_INT, master, NEW_LEVEL, MPI_COMM_WORLD, &status);
 				int i;
-				for(i = 0; i < my_level->num_m; i++)
-				{
-					int num_elems = priority_queue_num_elems(my_level->queues[i]);
-					MPI_Send(&num_elems,
-							 1,
-							 MPI_INT,
-							 0,
-							 SLAVE_OUTPUT,
-							 MPI_COMM_WORLD);
-					while(priority_queue_num_elems(my_level->queues[i]))
-					{
-						graph_info *g = priority_queue_pull(my_level->queues[i]);
-						send_graph(SLAVE_OUTPUT, 0, g, true);
-						graph_info_destroy(g);
-					}
-				}
+				send_graphs(my_level, master);
 				level_delete(my_level);
 				my_level = level_create(n + 1, P, MAX_K);
 				printf("n = %d (slave %d)\n", n, rank);
@@ -323,15 +446,61 @@ static void slave(int rank)
 				return;
 			case SLAVE_INPUT:
 			{
-				graph_info *g = receive_graph(SLAVE_INPUT, 0, n, false);
+				graph_info *g = receive_graph(SLAVE_INPUT, master, n, false);
 				extend_graph_and_add_to_level(*g, my_level);
 				graph_info_destroy(g);
 				
-				MPI_Send(0, 0, MPI_INT, 0, SLAVE_REQUEST, MPI_COMM_WORLD);
+				MPI_Send(0, 0, MPI_INT, master, SLAVE_REQUEST, MPI_COMM_WORLD);
 				break;
 			}
 		}
 	}
+}
+
+#define NUM_LEVELS 3
+
+//parent:child ratio for each level of the tree
+int num_children[NUM_LEVELS - 1] = {2, 4};
+
+static bool check_size(int size)
+{
+	int sum = 0, level, level_size = 1;
+	for(level = 0; level < NUM_LEVELS; level++)
+	{
+		sum += level_size;
+		if(level < NUM_LEVELS - 1)
+			level_size *= num_children[level];
+	}
+	
+	return sum == size;
+}
+
+static void get_position(int rank, int *slave_start, int *num_slaves, int *master)
+{
+	int level_start = 0, level_size = 1, level = 0;
+	while(rank >= level_start + level_size)
+	{
+		level_start += level_size;
+		level_size *= num_children[level];
+		level++;
+		assert(level < NUM_LEVELS);
+	}
+	
+	int level_pos = rank - level_start;
+	
+	if(level < NUM_LEVELS - 1)
+	{
+		*slave_start = level_start + level_size;
+		*slave_start += level_pos * num_children[level];
+		*num_slaves = num_children[level];
+	}
+	else
+		*slave_start = -1;
+	
+	int old_level_size = level_size / num_children[level - 1];
+	int master_pos = level_pos / num_children[level - 1];
+	int old_level_start = level_start - old_level_size;
+	*master = old_level_start + master_pos;
 }
 
 int main(int argc, char *argv[])
@@ -341,18 +510,20 @@ int main(int argc, char *argv[])
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-	//MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+	MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
 
+	assert(check_size(size));
 
-
-	switch(rank)
+	if(rank == 0)
+		master(num_children[0] + 1);
+	else
 	{
-		case 0:
-			master(size);
-			break;
-		default:
-			slave(rank);
-			break;
+		int slave_start, num_slaves, master;
+		get_position(rank, &slave_start, &num_slaves, &master);
+		if(slave_start == -1)
+			slave(rank, master);
+		else
+			master_slave(rank, master, slave_start, num_slaves);
 	}
 
 	printf("I'm Done: %d/%d\n", rank, size);
