@@ -1,6 +1,7 @@
 *.o
 *.DS_Store
 fun_with_graphs
+nauty24r2/makefile
 nauty24r2/NRswitchg
 nauty24r2/addedgeg
 nauty24r2/amtog
