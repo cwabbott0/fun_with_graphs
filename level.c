@@ -60,6 +60,7 @@ level *level_create(unsigned n, unsigned p, unsigned max_k)
 	
 	ret->sets = malloc(ret->num_m * sizeof(hash_set*));
 	ret->queues = malloc(ret->num_m * sizeof(priority_queue*));
+	ret->max_graphs = malloc(ret->num_m * 2 * sizeof(int));
 	
 	for(int i = 0; i < ret->num_m; i++)
 	{
@@ -67,6 +68,7 @@ level *level_create(unsigned n, unsigned p, unsigned max_k)
 									   nauty_delete);
 		ret->queues[i] = priority_queue_create(graph_compare_gt,
 											   graph_delete);
+		ret->max_graphs[2*i] = ret->max_graphs[2*i + 1] = -1;
 	}
 	
 	return ret;
@@ -113,9 +115,10 @@ bool add_graph_to_level(graph_info *new_graph, level *my_level)
 {
 	unsigned i = new_graph->m - my_level->min_m;
 	
-	if(priority_queue_num_elems(my_level->queues[i]) >= my_level->p &&
-	   graph_compare_gt(new_graph,
-						priority_queue_peek(my_level->queues[i])))
+	if(my_level->max_graphs[2*i] != -1 &&
+	   (new_graph->sum_of_distances > my_level->max_graphs[2*i] ||
+		(new_graph->sum_of_distances == my_level->max_graphs[2*i] &&
+		 new_graph->diameter > my_level->max_graphs[2*i + 1])))
 		return false;
 	
 	if(!new_graph->gcan)
@@ -158,6 +161,13 @@ void _add_graph_to_level(graph_info *new_graph, level *my_level)
 			hash_set_remove(my_level->sets[i], g);
 		graph_info_destroy(g);
 	}
+	
+	graph_info* max_graph = priority_queue_peek(my_level->queues[i]);
+	if(max_graph->sum_of_distances > my_level->max_graphs[2*i])
+		my_level->max_graphs[2*i] = max_graph->sum_of_distances;
+	if(max_graph->sum_of_distances == my_level->max_graphs[2*i] &&
+	   max_graph->diameter > my_level->max_graphs[2*i + 1])
+		my_level->max_graphs[2*i + 1] = max_graph->diameter;
 }
 
 static void init_extended(graph_info input, graph_info *extended)

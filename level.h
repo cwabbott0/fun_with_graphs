@@ -14,6 +14,8 @@ typedef struct {
 	
 	hash_set **sets; //one hash set for each m
 	priority_queue **queues;
+	
+	int *max_graphs; //for passing from the master to the slaves
 } level;
 
 level *level_create(unsigned n, unsigned p, unsigned max_k);
