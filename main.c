@@ -10,6 +10,7 @@
 #define SLAVE_OUTPUT 3
 #define SLAVE_OUTPUT_SIZE 4
 #define SLAVE_REQUEST 5
+#define SLAVE_OUTPUT_REQUEST 6
 
 #ifdef SETWORD_SHORT
 #define MPI_SETWORD MPI_UNSIGNED_SHORT
@@ -282,7 +283,7 @@ static void master_receive_graphs(int n, int size, level *new_level)
 		{
 			case SLAVE_REQUEST:
 				MPI_Recv(0, 0, MPI_INT, status.MPI_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
-				MPI_Send(&n, 1, MPI_INT, status.MPI_SOURCE, NEW_LEVEL, MPI_COMM_WORLD);
+				MPI_Send(&n, 1, MPI_INT, status.MPI_SOURCE, SLAVE_OUTPUT_REQUEST, MPI_COMM_WORLD);
 				break;
 			case SLAVE_OUTPUT:
 			{
@@ -354,6 +355,9 @@ static void master(int size)
 		master_receive_graphs(n + 1, size, new_level);
 		
 		n++;
+
+		for(i = 1; i < size; i++)
+			MPI_Send(&n, 1, MPI_INT, i, NEW_LEVEL, MPI_COMM_WORLD);
 		
 		level_delete(cur_level);
 		cur_level = new_level;
@@ -406,8 +410,8 @@ static void slave(int rank)
 		MPI_Probe(0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 		switch(status.MPI_TAG)
 		{
-			case NEW_LEVEL:
-				MPI_Recv(&n, 1, MPI_INT, 0, NEW_LEVEL, MPI_COMM_WORLD, &status);
+			case SLAVE_OUTPUT_REQUEST:
+				MPI_Recv(0, 0, MPI_INT, 0, SLAVE_OUTPUT_REQUEST, MPI_COMM_WORLD, &status);
 				int i;
 				for(i = 0; i < my_level->num_m; i++)
 				{
@@ -417,6 +421,10 @@ static void slave(int rank)
 					send_graphs(0, SLAVE_OUTPUT, (graph_info**) my_level->queues[i]->elems, num_elems, graph_type);
 				}
 				level_delete(my_level);
+				my_level = level_create(n, P, MAX_K);
+			case NEW_LEVEL:
+				MPI_Recv(&n, 1, MPI_INT, 0, NEW_LEVEL, MPI_COMM_WORLD, &status);
+				level_delete(my_level);
 				my_level = level_create(n + 1, P, MAX_K);
 				graph_info_type_delete(graph_type);
 				graph_type = graph_info_type_create(n + 1);
@@ -424,6 +432,7 @@ static void slave(int rank)
 				break;
 			case SLAVE_KILL:
 				level_delete(my_level);
+				graph_info_type_delete(graph_type);
 				return;
 			case SLAVE_INPUT:
 			{
