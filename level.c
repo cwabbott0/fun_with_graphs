@@ -1,6 +1,7 @@
 #include "level.h"
 #include "naututil.h"
 #include <string.h>
+#include <assert.h>
 
 //Hash set implementation/callbacks
 
@@ -83,6 +84,7 @@ void level_delete(level *my_level)
 	for(int i = 0; i < my_level->num_m; i++)
 		priority_queue_delete(my_level->queues[i]);
 	free(my_level->queues);
+	free(my_level->max_graphs);
 	
 	free(my_level);
 }
@@ -109,6 +111,14 @@ bool level_empty(level *my_level)
 		if(priority_queue_num_elems(my_level->queues[i]))
 			return false;
 	return true;
+}
+
+int level_num_graphs(level *my_level)
+{
+	int i, sum = 0;
+	for(i = 0; i < my_level->num_m; i++)
+		sum += priority_queue_num_elems(my_level->queues[i]);
+	return sum;
 }
 
 bool add_graph_to_level(graph_info *new_graph, level *my_level)
@@ -152,6 +162,7 @@ bool add_graph_to_level(graph_info *new_graph, level *my_level)
 //Used for the first level created by geng
 void _add_graph_to_level(graph_info *new_graph, level *my_level)
 {
+	assert(new_graph->n == my_level->n);
 	unsigned i = new_graph->m - my_level->min_m;
 	priority_queue_push(my_level->queues[i], new_graph);
 	if(priority_queue_num_elems(my_level->queues[i]) > my_level->p)

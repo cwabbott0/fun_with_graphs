@@ -11,6 +11,7 @@
 #define SLAVE_OUTPUT_SIZE 4
 #define SLAVE_REQUEST 5
 #define SLAVE_OUTPUT_REQUEST 6
+#define MAX_GRAPHS 7
 
 #ifdef SETWORD_SHORT
 #define MPI_SETWORD MPI_UNSIGNED_SHORT
@@ -327,35 +328,53 @@ static void master(int size)
 		printf("n = %u\n", n);
 		level *new_level = level_create(n + 1, P, MAX_K);
 		
-		int i, j;
-		for(i = 1; i < size; i++)
-			for(j = 0; j < cur_level->num_m; j++)
-				if(priority_queue_num_elems(cur_level->queues[j]))
-				{
-					graph_info *g = priority_queue_pull(cur_level->queues[j]);
-					send_graph(SLAVE_INPUT, i, g, false);
-					graph_info_destroy(g);
-					break;
-				}
+		int total_graphs = level_num_graphs(cur_level);
+		
+		bool first_loop_done = false;
 		
 		while(!level_empty(cur_level))
 		{
-			MPI_Recv(0, 0, MPI_INT, MPI_ANY_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
-			int i;
-			for(i = 0; i < cur_level->num_m; i++)
-				if(priority_queue_num_elems(cur_level->queues[i]))
-				{
-					graph_info *g = priority_queue_pull(cur_level->queues[i]);
-					send_graph(SLAVE_INPUT, status.MPI_SOURCE, g, false);
-					graph_info_destroy(g);
-					break;
-				}
+			int i, j;
+			for(i = 1; i < size; i++)
+				for(j = 0; j < cur_level->num_m; j++)
+					if(priority_queue_num_elems(cur_level->queues[j]))
+					{
+						graph_info *g = priority_queue_pull(cur_level->queues[j]);
+						send_graph(SLAVE_INPUT, i, g, false);
+						graph_info_destroy(g);
+						break;
+					}
+			
+			while(!level_empty(cur_level) &&
+				  (first_loop_done || level_num_graphs(cur_level) < total_graphs / 4))
+			{
+				MPI_Recv(0, 0, MPI_INT, MPI_ANY_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
+				int i;
+				for(i = 0; i < cur_level->num_m; i++)
+					if(priority_queue_num_elems(cur_level->queues[i]))
+					{
+						graph_info *g = priority_queue_pull(cur_level->queues[i]);
+						send_graph(SLAVE_INPUT, status.MPI_SOURCE, g, false);
+						graph_info_destroy(g);
+						break;
+					}
+			}
+			
+			master_receive_graphs(n + 1, size, new_level);
+			
+			if(first_loop_done)
+				for(i = 1; i < size; i++)
+					MPI_Send(new_level->max_graphs,
+							 new_level->num_m * 2,
+							 MPI_INT, i,
+							 MAX_GRAPHS, MPI_COMM_WORLD);
+			
+			first_loop_done = true;
 		}
-		
-		master_receive_graphs(n + 1, size, new_level);
 		
 		n++;
 
+		int i;
 		for(i = 1; i < size; i++)
 			MPI_Send(&n, 1, MPI_INT, i, NEW_LEVEL, MPI_COMM_WORLD);
 		
@@ -421,7 +440,8 @@ static void slave(int rank)
 					send_graphs(0, SLAVE_OUTPUT, (graph_info**) my_level->queues[i]->elems, num_elems, graph_type);
 				}
 				level_delete(my_level);
-				my_level = level_create(n, P, MAX_K);
+				my_level = level_create(n + 1, P, MAX_K);
+				break;
 			case NEW_LEVEL:
 				MPI_Recv(&n, 1, MPI_INT, 0, NEW_LEVEL, MPI_COMM_WORLD, &status);
 				level_delete(my_level);
@@ -443,6 +463,12 @@ static void slave(int rank)
 				MPI_Send(0, 0, MPI_INT, 0, SLAVE_REQUEST, MPI_COMM_WORLD);
 				break;
 			}
+			case MAX_GRAPHS:
+				MPI_Recv(my_level->max_graphs,
+						 my_level->num_m * 2,
+						 MPI_INT, status.MPI_SOURCE,
+						 MAX_GRAPHS, MPI_COMM_WORLD, &status);
+				break;
 		}
 	}
 }
