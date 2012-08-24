@@ -7,7 +7,8 @@
 #define SLAVE_KILL 1
 #define SLAVE_INPUT 2
 #define SLAVE_OUTPUT 3
-#define SLAVE_REQUEST 4
+#define SLAVE_OUTPUT_SIZE 4
+#define SLAVE_REQUEST 5
 
 #ifdef SETWORD_SHORT
 #define MPI_SETWORD MPI_UNSIGNED_SHORT
@@ -22,6 +23,18 @@
 #endif
 #endif
 #endif
+
+#define CHECK_MPI(x) do {\
+int result = x;\
+if (result != MPI_SUCCESS)\
+{\
+char err_string[MPI_MAX_ERROR_STRING];\
+int len;\
+MPI_Error_string(result, err_string, &len);\
+fprintf(stderr, "Error: %s\n", err_string);\
+raise(SIGINT);\
+}\
+} while(0)
 
 int geng(int argc, char *argv[]); //entry point for geng
 
@@ -138,6 +151,106 @@ static void send_graph(int tag, int dest, graph_info* g, bool canon)
 			 MPI_COMM_WORLD);
 }
 
+typedef struct {
+	MPI_Datatype type;
+	unsigned nauty_offset;
+	unsigned canon_offset;
+	unsigned size;
+	unsigned n;
+	MPI_Aint extent;
+} graph_info_type;
+
+static graph_info_type graph_info_type_create(unsigned n)
+{
+	unsigned offset = 0;
+	graph_info_type ret;
+	int m = (n + WORDSIZE - 1) / WORDSIZE;
+	
+	ret.n = n;
+
+	int blocklengths[3] = {n * n, n * m, n * m};
+	MPI_Datatype types[3] = {MPI_INT, MPI_SETWORD, MPI_SETWORD};
+	MPI_Aint offsets[3];
+
+	offsets[0] = 0;
+	offset += n * n * sizeof(int);
+
+	offsets[1] = ret.nauty_offset = offset;
+	offset += n * m * sizeof(setword);
+
+	offsets[2] = ret.canon_offset = offset;
+	
+	MPI_Type_struct(3, blocklengths, offsets, types, &ret.type);
+	
+	MPI_Aint lb;
+	MPI_Type_get_extent(ret.type, &lb, &ret.extent);
+	
+	MPI_Type_commit(&ret.type);
+	
+	return ret;
+}
+
+static void graph_info_type_delete(graph_info_type graph_type)
+{
+	MPI_Type_free(&graph_type.type);
+}
+
+static void send_graphs(int dest, int tag, graph_info **graphs, int num_graphs, graph_info_type graph_type)
+{
+	void *buf = malloc(num_graphs * graph_type.extent);
+	int m = (graph_type.n + WORDSIZE - 1) / WORDSIZE;
+	for(int i = 0; i < num_graphs; i++)
+	{
+		int *distances = buf + graph_type.extent * i;
+		memcpy(distances, graphs[i]->distances, graph_type.n * graph_type.n * sizeof(int));
+		
+		graph *nauty_graph = buf + graph_type.extent * i + graph_type.nauty_offset;
+		memcpy(nauty_graph, graphs[i]->nauty_graph, graph_type.n * m * sizeof(setword));
+		
+		graph *gcan = buf + graph_type.extent * i + graph_type.canon_offset;
+		memcpy(gcan, graphs[i]->gcan, graph_type.n * m * sizeof(setword));
+	}
+	
+	MPI_Send(buf, num_graphs, graph_type.type, dest, tag, MPI_COMM_WORLD);
+	free(buf);
+}
+
+static void receive_graphs(int src, int tag, graph_info **graphs, int num_graphs, graph_info_type graph_type)
+{
+	MPI_Status status;
+	void *buf = malloc(num_graphs * graph_type.extent);
+	int m = (graph_type.n + WORDSIZE - 1) / WORDSIZE;
+	
+	CHECK_MPI(MPI_Recv(buf, num_graphs, graph_type.type, src, tag, MPI_COMM_WORLD, &status));
+	
+	for(int i = 0; i < num_graphs; i++)
+	{
+		graphs[i] = malloc(sizeof(graph_info));
+		graphs[i]->distances = malloc(graph_type.n * graph_type.n * sizeof(int));
+		graphs[i]->k = malloc(graph_type.n * sizeof(int));
+		graphs[i]->nauty_graph = malloc(graph_type.n * m * sizeof(setword));
+		graphs[i]->gcan = malloc(graph_type.n * m * sizeof(setword));
+		
+		int *distances = buf + graph_type.extent * i;
+		memcpy(graphs[i]->distances, distances, graph_type.n * graph_type.n * sizeof(int));
+		
+		graph *nauty_graph = buf + graph_type.extent * i + graph_type.nauty_offset;
+		memcpy(graphs[i]->nauty_graph, nauty_graph, graph_type.n * m * sizeof(setword));
+		
+		graph *gcan = buf + graph_type.extent * i + graph_type.canon_offset;
+		memcpy(graphs[i]->gcan, gcan, graph_type.n * m * sizeof(setword));
+		
+		graphs[i]->n = graph_type.n;
+		calc_k(*(graphs[i]));
+		graphs[i]->sum_of_distances = calc_sum(*(graphs[i]));	
+		graphs[i]->m = calc_m(*(graphs[i]));	
+		graphs[i]->diameter = calc_diameter(*(graphs[i]));	
+		graphs[i]->max_k = calc_max_k(*(graphs[i]));
+	}
+	
+	free(buf);
+}
+
 bool slaves_done(bool *slave_done, int num_slaves)
 {
 	int i;
@@ -155,6 +268,7 @@ static void master(int size)
 	while(graph_sizes[n] <= P)
 		n++;
 	bool slave_done[size - 1];
+	int num_m_completed[size - 1];
 	
 	//setup cur_level for geng_callback()
 	cur_level = level_create(n, P, MAX_K);
@@ -195,7 +309,12 @@ static void master(int size)
 		n++;
 		
 		for(i = 0; i < size - 1; i++)
+		{
 			slave_done[i] = false;
+			num_m_completed[i] = 0;
+		}
+		
+		graph_info_type graph_type = graph_info_type_create(n);
 		
 		while(!slaves_done(slave_done, size - 1))
 		{
@@ -208,28 +327,25 @@ static void master(int size)
 					break;
 				case SLAVE_OUTPUT:
 				{
-					int i, j;
-					for(i = 0; i < new_level->num_m; i++)
+					int i, count;
+					MPI_Get_count(&status, graph_type.type, &count);
+					graph_info **graphs = malloc(count * sizeof(graph_info*));
+					receive_graphs(status.MPI_SOURCE, SLAVE_OUTPUT, graphs,
+								   count, graph_type);
+					for(i = 0; i < count; i++)
 					{
-						int size;
-						MPI_Recv(&size, 1,
-								 MPI_INT,
-								 status.MPI_SOURCE,
-								 SLAVE_OUTPUT,
-								 MPI_COMM_WORLD,
-								 &status);
-						for(j = 0; j < size; j++)
-						{
-							graph_info *g = receive_graph(SLAVE_OUTPUT, status.MPI_SOURCE, n, true);
-							if(!add_graph_to_level(g, new_level))
-								graph_info_destroy(g);
-						}
+						if(!add_graph_to_level(graphs[i], new_level))
+							graph_info_destroy(graphs[i]);
 					}
-					slave_done[status.MPI_SOURCE - 1] = true;
+					num_m_completed[status.MPI_SOURCE - 1]++;
+					if(num_m_completed[status.MPI_SOURCE - 1] == new_level->num_m)
+						slave_done[status.MPI_SOURCE - 1] = true;
 					break;
 				}
 			}
 		}
+	
+		graph_info_type_delete(graph_type);
 		
 		level_delete(cur_level);
 		cur_level = new_level;
@@ -274,6 +390,7 @@ static void slave(int rank)
 	while(graph_sizes[n] <= P)
 		n++;
 	
+	graph_info_type graph_type = graph_info_type_create(n + 1);
 	level *my_level = level_create(n + 1, P, MAX_K);
 	
 	while(true)
@@ -287,21 +404,14 @@ static void slave(int rank)
 				for(i = 0; i < my_level->num_m; i++)
 				{
 					int num_elems = priority_queue_num_elems(my_level->queues[i]);
-					MPI_Send(&num_elems,
-							 1,
-							 MPI_INT,
-							 0,
-							 SLAVE_OUTPUT,
-							 MPI_COMM_WORLD);
-					while(priority_queue_num_elems(my_level->queues[i]))
-					{
-						graph_info *g = priority_queue_pull(my_level->queues[i]);
-						send_graph(SLAVE_OUTPUT, 0, g, true);
-						graph_info_destroy(g);
-					}
+					//bit of a hack here, shouldn't be using elems directly...
+					//but it saves a lot of computation/copying
+					send_graphs(0, SLAVE_OUTPUT, (graph_info**) my_level->queues[i]->elems, num_elems, graph_type);
 				}
 				level_delete(my_level);
 				my_level = level_create(n + 1, P, MAX_K);
+				graph_info_type_delete(graph_type);
+				graph_type = graph_info_type_create(n + 1);
 				printf("n = %d (slave %d)\n", n, rank);
 				break;
 			case SLAVE_KILL:
@@ -327,7 +437,7 @@ int main(int argc, char *argv[])
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-	//MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+	MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
 
 
 
