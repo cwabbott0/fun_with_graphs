@@ -330,7 +330,7 @@ static void master(int size)
 		
 		int total_graphs = level_num_graphs(cur_level);
 		
-		bool first_loop_done = false;
+		int num_loops_done = 0;
 		
 		while(!level_empty(cur_level))
 		{
@@ -346,7 +346,7 @@ static void master(int size)
 					}
 			
 			while(!level_empty(cur_level) &&
-				  (first_loop_done || level_num_graphs(cur_level) < total_graphs / 4))
+				  (num_loops_done == 0 || level_num_graphs(cur_level) < total_graphs / 4))
 			{
 				MPI_Recv(0, 0, MPI_INT, MPI_ANY_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
 				int i;
@@ -362,14 +362,14 @@ static void master(int size)
 			
 			master_receive_graphs(n + 1, size, new_level);
 			
-			if(first_loop_done)
+			if(!level_empty(cur_level))
 				for(i = 1; i < size; i++)
 					MPI_Send(new_level->max_graphs,
 							 new_level->num_m * 2,
 							 MPI_INT, i,
 							 MAX_GRAPHS, MPI_COMM_WORLD);
 			
-			first_loop_done = true;
+			num_loops_done++;
 		}
 		
 		n++;
