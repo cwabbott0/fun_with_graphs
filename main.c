@@ -270,6 +270,7 @@ static void master_receive_graphs(int n, int size, level *new_level)
 	bool slave_done[size - 1];
 	int num_m_completed[size - 1];
 	int i;
+	int total_num_graphs = 0;
 	
 	for(i = 0; i < size - 1; i++)
 	{
@@ -290,6 +291,7 @@ static void master_receive_graphs(int n, int size, level *new_level)
 			{
 				int i, count;
 				MPI_Get_count(&status, graph_type.type, &count);
+				total_num_graphs += count;
 				graph_info **graphs = malloc(count * sizeof(graph_info*));
 				receive_graphs(status.MPI_SOURCE, SLAVE_OUTPUT, graphs,
 							   count, graph_type);
@@ -305,6 +307,8 @@ static void master_receive_graphs(int n, int size, level *new_level)
 			}
 		}
 	}
+	
+	printf("received %d graphs\n", total_num_graphs);
 	
 	graph_info_type_delete(graph_type);
 }
@@ -329,6 +333,7 @@ static void master(int size)
 		level *new_level = level_create(n + 1, P, MAX_K);
 		
 		int total_graphs = level_num_graphs(cur_level);
+		printf("total graphs: %d\n", total_graphs);
 		
 		int num_loops_done = 0;
 		
@@ -346,7 +351,7 @@ static void master(int size)
 					}
 			
 			while(!level_empty(cur_level) &&
-				  (num_loops_done == 0 || level_num_graphs(cur_level) < total_graphs / 4))
+				  (num_loops_done > 0 || level_num_graphs(cur_level) >  3 * total_graphs / 4))
 			{
 				MPI_Recv(0, 0, MPI_INT, MPI_ANY_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
 				int i;
@@ -359,6 +364,8 @@ static void master(int size)
 						break;
 					}
 			}
+			
+			printf("master: have %d graphs left\n", level_num_graphs(cur_level));
 			
 			master_receive_graphs(n + 1, size, new_level);
 			
