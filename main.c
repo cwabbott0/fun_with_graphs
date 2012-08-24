@@ -328,6 +328,19 @@ static void master_receive_graphs(int n, int size, level *new_level)
 	graph_info_type_delete(graph_type);
 }
 
+static void master_send_graph(level *cur_level, int slave)
+{
+	int i;
+	for(i = 0; i < cur_level->num_m; i++)
+		if(priority_queue_num_elems(cur_level->queues[i]))
+		{
+			graph_info *g = priority_queue_pull(cur_level->queues[i]);
+			send_graph(SLAVE_INPUT, slave, g, false);
+			graph_info_destroy(g);
+			break;
+		}
+}
+
 static void master(int size)
 {
 	MPI_Status status;
@@ -356,28 +369,13 @@ static void master(int size)
 		{
 			int i, j;
 			for(i = 1; i < size; i++)
-				for(j = 0; j < cur_level->num_m; j++)
-					if(priority_queue_num_elems(cur_level->queues[j]))
-					{
-						graph_info *g = priority_queue_pull(cur_level->queues[j]);
-						send_graph(SLAVE_INPUT, i, g, false);
-						graph_info_destroy(g);
-						break;
-					}
+				master_send_graph(cur_level, i);
 			
 			while(!level_empty(cur_level) &&
 				  (num_loops_done > 0 || level_num_graphs(cur_level) >  3 * total_graphs / 4))
 			{
 				MPI_Recv(0, 0, MPI_INT, MPI_ANY_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
-				int i;
-				for(i = 0; i < cur_level->num_m; i++)
-					if(priority_queue_num_elems(cur_level->queues[i]))
-					{
-						graph_info *g = priority_queue_pull(cur_level->queues[i]);
-						send_graph(SLAVE_INPUT, status.MPI_SOURCE, g, false);
-						graph_info_destroy(g);
-						break;
-					}
+				master_send_graph(cur_level, status.MPI_SOURCE);
 			}
 			
 			printf("master: have %d graphs left\n", level_num_graphs(cur_level));
