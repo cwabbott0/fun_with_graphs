@@ -162,12 +162,12 @@ void _add_graph_to_level(graph_info *new_graph, level *my_level)
 		graph_info_destroy(g);
 	}
 	
-	graph_info* max_graph = priority_queue_peek(my_level->queues[i]);
-	if(max_graph->sum_of_distances > my_level->max_graphs[2*i])
+	if (priority_queue_num_elems(my_level->queues[i]) == my_level->p)
+	{
+		graph_info* max_graph = priority_queue_peek(my_level->queues[i]);
 		my_level->max_graphs[2*i] = max_graph->sum_of_distances;
-	if(max_graph->sum_of_distances == my_level->max_graphs[2*i] &&
-	   max_graph->diameter > my_level->max_graphs[2*i + 1])
 		my_level->max_graphs[2*i + 1] = max_graph->diameter;
+	}
 }
 
 static void init_extended(graph_info input, graph_info *extended)
