@@ -72,6 +72,21 @@ int call_geng(unsigned n, unsigned k)
 //where 3 is the max degree, and n is the number of nodes.
 //These values need to be regenerated if max-k changes. (k = 3)
 
+unsigned graph_sizes_4[] = {
+	1,
+	1,
+	1,
+	1,
+	2,
+	5,
+	18,
+	79,
+	430,
+	2768,
+	20346,
+	167703
+};
+
 unsigned graph_sizes[] = {
 	1, //n = 0
 	1, //n = 1
