@@ -369,42 +369,47 @@ static void master(int size)
 		bool collected_graphs;
 		while(!level_empty(cur_level))
 		{
-			MPI_Recv(0, 0, MPI_INT, MPI_ANY_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
-			collected_graphs = false;
-			
-			for(i = cur_m; i < cur_level->num_m; i++)
-				if(priority_queue_num_elems(cur_level->queues[i]))
+			if(priority_queue_num_elems(cur_level->queues[cur_m]))
+			{
+				MPI_Recv(0, 0, MPI_INT, MPI_ANY_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
+				graph_info *g = priority_queue_pull(cur_level->queues[cur_m]);
+				send_graph(SLAVE_INPUT, status.MPI_SOURCE, g, false);
+				graph_info_destroy(g);
+			}
+			else
+			{
+				//New m
+				while(!priority_queue_num_elems(cur_level->queues[cur_m]))
+					cur_m++;
+				
+				if(cur_m % MAX_K == 0)
 				{
-					if(i != cur_m)
-					{
-						//New m
-						cur_m = i;
-						if(cur_m % MAX_K == 0)
-						{
-							//Collect graphs
-							master_receive_graphs(n + 1, size, new_level);
-							for(j = 1; j < size; j++)
-								MPI_Send(new_level->max_graphs,
-										 new_level->num_m * 2,
-										 MPI_INT, j,
-										 MAX_GRAPHS, MPI_COMM_WORLD);
-							printf("master: have %d graphs left\n", level_num_graphs(cur_level));
-						}
-					}
-					
-					graph_info *g = priority_queue_pull(cur_level->queues[i]);
-					send_graph(SLAVE_INPUT, status.MPI_SOURCE, g, false);
-					graph_info_destroy(g);
-					
-					break;
+					//Collect graphs
+					master_receive_graphs(n + 1, size, new_level);
+					for(i = 1; i < size; i++)
+						MPI_Send(new_level->max_graphs,
+								 new_level->num_m * 2,
+								 MPI_INT, i,
+								 MAX_GRAPHS, MPI_COMM_WORLD);
+					printf("master: have %d graphs left\n", level_num_graphs(cur_level));
+					for(i = 1; i < size; i++)
+						for(j = cur_m; j < cur_level->num_m; j++)
+							if(priority_queue_num_elems(cur_level->queues[j]))
+							{
+								graph_info *g = priority_queue_pull(cur_level->queues[j]);
+								send_graph(SLAVE_INPUT, i, g, false);
+								graph_info_destroy(g);
+								cur_m = j;
+								break;
+							}
 				}
+			}
 		}
 		
 		master_receive_graphs(n + 1, size, new_level);
 		
 		n++;
-		
-		int i;
+
 		for(i = 1; i < size; i++)
 			MPI_Send(&n, 1, MPI_INT, i, NEW_LEVEL, MPI_COMM_WORLD);
 		
