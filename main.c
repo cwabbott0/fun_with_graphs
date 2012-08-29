@@ -325,7 +325,7 @@ static void master_receive_graphs(int n, int size, level *new_level)
 		}
 	}
 	
-	printf("received %d graphs\n", total_num_graphs);
+	//printf("received %d graphs\n", total_num_graphs);
 	
 	graph_info_type_delete(graph_type);
 }
@@ -341,18 +341,21 @@ static void master(int size)
 	//setup cur_level for geng_callback()
 	cur_level = level_create(n, P, MAX_K);
 	
+	FILE *fp = fopen("graphs.txt", "w");
+	
 	call_geng(n, MAX_K);
 	
 	//Main loop
-	while(n < 20)
+	while(n < 120)
 	{
 		printf("n = %u\n", n);
 		level *new_level = level_create(n + 1, P, MAX_K);
 		
 		int total_graphs = level_num_graphs(cur_level);
-		printf("total graphs: %d\n", total_graphs);
+		//printf("total graphs: %d\n", total_graphs);
 		
 		int cur_m = 0;
+		int min_distances = GRAPH_INFINITY;
 		
 		int i, j;
 		for(i = 1; i < size; i++)
@@ -374,6 +377,11 @@ static void master(int size)
 				MPI_Recv(0, 0, MPI_INT, MPI_ANY_SOURCE, SLAVE_REQUEST, MPI_COMM_WORLD, &status);
 				graph_info *g = priority_queue_pull(cur_level->queues[cur_m]);
 				send_graph(SLAVE_INPUT, status.MPI_SOURCE, g, false);
+				if(!priority_queue_num_elems(cur_level->queues[cur_m]))
+				{
+					if(min_distances > g->sum_of_distances)
+						min_distances = g->sum_of_distances;
+				}
 				graph_info_destroy(g);
 			}
 			else
@@ -382,7 +390,7 @@ static void master(int size)
 				while(!priority_queue_num_elems(cur_level->queues[cur_m]))
 					cur_m++;
 				
-				if(cur_m % MAX_K == 0)
+				if(cur_m % MAX_K == 0 && level_num_graphs(cur_level) >= size)
 				{
 					//Collect graphs
 					master_receive_graphs(n + 1, size, new_level);
@@ -391,7 +399,7 @@ static void master(int size)
 								 new_level->num_m * 2,
 								 MPI_INT, i,
 								 MAX_GRAPHS, MPI_COMM_WORLD);
-					printf("master: have %d graphs left\n", level_num_graphs(cur_level));
+					//printf("master: have %d graphs left\n", level_num_graphs(cur_level));
 					for(i = 1; i < size; i++)
 						for(j = cur_m; j < cur_level->num_m; j++)
 							if(priority_queue_num_elems(cur_level->queues[j]))
@@ -405,6 +413,9 @@ static void master(int size)
 				}
 			}
 		}
+		
+		fprintf(fp, "n = %d, distances = %f\n", n, (float) min_distances / (n * (n - 1) / 2));
+		fflush(fp);
 		
 		master_receive_graphs(n + 1, size, new_level);
 		
@@ -447,6 +458,8 @@ static void master(int size)
 	print_graph(*best_graph);
 	
 	level_delete(cur_level);
+	
+	fclose(fp);
 }
 
 static void slave(int rank)
